@@ -1,0 +1,12 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["node_modules", "lib"]
+remappings = ["hardhat/=node_modules/hardhat/"]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+
+[etherscan]
+# Used by `forge script --verify` or `forge verify-contract`. Set this in your .env
+bsc = { key = "${BSCSCAN_API_KEY}" }
+bsc_testnet = { key = "${BSCSCAN_API_KEY}", chain = 97, url = "https://api-testnet.bscscan.com/api" }
