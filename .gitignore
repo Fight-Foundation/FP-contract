@@ -1,16 +1,41 @@
-# Compiler files
+#############################
+# Build artifacts (Foundry/HH)
+#############################
 cache/
 out/
+artifacts/
+coverage/
 
-# Ignores development broadcast logs
+#############################
+# Dependencies
+#############################
+node_modules/
+
+#############################
+# Broadcast logs (keep run-latest)
+#############################
 !/broadcast
 /broadcast/*/31337/
 /broadcast/**/dry-run/
+/broadcast/**/run-*.json
+!/broadcast/**/run-latest.json
 
-# Docs
-docs/
-
-# Dotenv file
+#############################
+# Env and secrets
+#############################
 .env
-.gitsecret/keys/random_seed
-!*.secret
+.env.*
+!.env.example
+.gitsecret/keys/
+
+#############################
+# Editor/OS files
+#############################
+.DS_Store
+.vscode/
+.idea/
+
+#############################
+# Optional project docs output
+#############################
+docs/
