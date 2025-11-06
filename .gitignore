@@ -24,8 +24,17 @@ node_modules/
 # Env and secrets
 #############################
 .env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+# Fallback: ignore any other env variants by default
 .env.*
+#! Exceptions for encrypted/templated files
 !.env.example
+.env.secret
+!*.secret
 .gitsecret/keys/
 
 #############################
