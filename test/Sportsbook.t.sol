@@ -1710,6 +1710,420 @@ contract SportsbookTest is Test, IERC1155Receiver {
         console2.log("=== INTEGRITY CHECKS PASSED ===");
     }
 
+    // ============ TIME WINDOW TESTS ============
+    
+    function testCutOffTime_PredictionsBeforeCutOffTime() public {
+        console2.log("\n=== TEST: Predictions Before CutOffTime ===");
+        
+        // Create season with cutOffTime in the future
+        uint256 seasonId = 300;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // User should be able to make predictions before cutOffTime
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        console2.log("Predictions made successfully before cutOffTime");
+        
+        // Verify position was created
+        Sportsbook.Position memory position = sportsbook.getPosition(user1, seasonId, 0);
+        assertEq(position.outcome, 0);
+        assertEq(position.stakeAmount, 20);
+        assertFalse(position.claimed);
+        
+        console2.log("Position verified");
+    }
+    
+    function testCutOffTime_PredictionsAfterCutOffTime() public {
+        console2.log("\n=== TEST: Predictions After CutOffTime Should Fail ===");
+        
+        // Create season with cutOffTime in the past
+        uint256 seasonId = 301;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // Advance time past cutOffTime
+        vm.warp(cutOffTime + 1);
+        
+        // User should NOT be able to make predictions after cutOffTime
+        vm.prank(user1);
+        vm.expectRevert("SB-15"); // Invalid time parameter
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        console2.log("Predictions correctly rejected after cutOffTime");
+    }
+    
+    function testCutOffTime_PredictionsExactlyAtCutOffTime() public {
+        console2.log("\n=== TEST: Predictions Exactly At CutOffTime ===");
+        
+        // Create season with cutOffTime
+        uint256 seasonId = 302;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // Advance time to exactly cutOffTime
+        vm.warp(cutOffTime);
+        
+        // User should be able to make predictions exactly at cutOffTime (<=)
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        console2.log("Predictions made successfully exactly at cutOffTime");
+        
+        // Verify position was created
+        Sportsbook.Position memory position = sportsbook.getPosition(user1, seasonId, 0);
+        assertEq(position.outcome, 0);
+        assertEq(position.stakeAmount, 20);
+        assertFalse(position.claimed);
+        
+        console2.log("Position verified");
+    }
+    
+    function testClaimWindow_ClaimBeforeSettlementTime() public {
+        console2.log("\n=== TEST: Claim Before SettlementTime Should Fail ===");
+        
+        // Create season and resolve it
+        uint256 seasonId = 303;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // User makes prediction
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        // Resolve season
+        uint8[] memory winningOutcomes = new uint8[](1);
+        winningOutcomes[0] = 0; // User wins
+        
+        sportsbook.resolveSeason(seasonId, winningOutcomes);
+        
+        // Get settlement time
+        (, , , , uint256 settlementTime) = sportsbook.seasons(seasonId);
+        assertGt(settlementTime, 0);
+        
+        // Try to claim before settlement time (go back in time)
+        vm.warp(settlementTime - 1);
+        
+        vm.prank(user1);
+        vm.expectRevert("SB-20"); // Claim window not open
+        sportsbook.claim(seasonId);
+        
+        console2.log("Claim correctly rejected before settlementTime");
+    }
+    
+    function testClaimWindow_ClaimAfterClaimWindow() public {
+        console2.log("\n=== TEST: Claim After ClaimWindow Should Fail ===");
+        
+        // Create season and resolve it
+        uint256 seasonId = 304;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // User makes prediction
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        // Resolve season
+        uint8[] memory winningOutcomes = new uint8[](1);
+        winningOutcomes[0] = 0; // User wins
+        
+        sportsbook.resolveSeason(seasonId, winningOutcomes);
+        
+        // Get settlement time and CLAIM_WINDOW
+        (, , , , uint256 settlementTime) = sportsbook.seasons(seasonId);
+        uint256 CLAIM_WINDOW = sportsbook.CLAIM_WINDOW();
+        
+        // Advance time past claim window
+        vm.warp(settlementTime + CLAIM_WINDOW + 1);
+        
+        vm.prank(user1);
+        vm.expectRevert("SB-19"); // Claim window expired
+        sportsbook.claim(seasonId);
+        
+        console2.log("Claim correctly rejected after CLAIM_WINDOW");
+    }
+    
+    function testClaimWindow_ClaimExactlyAtSettlementTime() public {
+        console2.log("\n=== TEST: Claim Exactly At SettlementTime ===");
+        
+        // Create season and resolve it
+        uint256 seasonId = 305;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // User makes prediction
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        // Resolve season
+        uint8[] memory winningOutcomes = new uint8[](1);
+        winningOutcomes[0] = 0; // User wins
+        
+        sportsbook.resolveSeason(seasonId, winningOutcomes);
+        
+        // Get settlement time
+        (, , , , uint256 settlementTime) = sportsbook.seasons(seasonId);
+        
+        // Advance time to exactly settlement time
+        vm.warp(settlementTime);
+        
+        // User should be able to claim exactly at settlement time (>=)
+        uint256 balanceBefore = fp1155.balanceOf(user1, SEASON_TOKEN_ID);
+        vm.prank(user1);
+        sportsbook.claim(seasonId);
+        uint256 balanceAfter = fp1155.balanceOf(user1, SEASON_TOKEN_ID);
+        
+        assertGt(balanceAfter, balanceBefore);
+        console2.log("Claim successful exactly at settlementTime");
+    }
+    
+    function testClaimWindow_ClaimExactlyAtEndOfClaimWindow() public {
+        console2.log("\n=== TEST: Claim Exactly At End Of ClaimWindow ===");
+        
+        // Create season and resolve it
+        uint256 seasonId = 306;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // User makes prediction
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        // Resolve season
+        uint8[] memory winningOutcomes = new uint8[](1);
+        winningOutcomes[0] = 0; // User wins
+        
+        sportsbook.resolveSeason(seasonId, winningOutcomes);
+        
+        // Get settlement time and CLAIM_WINDOW
+        (, , , , uint256 settlementTime) = sportsbook.seasons(seasonId);
+        uint256 CLAIM_WINDOW = sportsbook.CLAIM_WINDOW();
+        
+        // Advance time to exactly end of claim window
+        vm.warp(settlementTime + CLAIM_WINDOW);
+        
+        // User should be able to claim exactly at end of claim window (<=)
+        uint256 balanceBefore = fp1155.balanceOf(user1, SEASON_TOKEN_ID);
+        vm.prank(user1);
+        sportsbook.claim(seasonId);
+        uint256 balanceAfter = fp1155.balanceOf(user1, SEASON_TOKEN_ID);
+        
+        assertGt(balanceAfter, balanceBefore);
+        console2.log("Claim successful exactly at end of CLAIM_WINDOW");
+    }
+    
+    function testClaimWindow_ClaimWithinClaimWindow() public {
+        console2.log("\n=== TEST: Claim Within ClaimWindow ===");
+        
+        // Create season and resolve it
+        uint256 seasonId = 307;
+        uint256 cutOffTime = block.timestamp + 1 days;
+        
+        Sportsbook.FightConfig[] memory fightConfigs = new Sportsbook.FightConfig[](1);
+        fightConfigs[0] = Sportsbook.FightConfig({
+            minBet: 10,
+            maxBet: 100,
+            numOutcomes: 6
+        });
+        
+        uint256[] memory fightPrizePoolAmounts = new uint256[](1);
+        fightPrizePoolAmounts[0] = 100;
+        
+        fp1155.mint(admin, SEASON_TOKEN_ID, 100, "");
+        fp1155.setTransferAllowlist(admin, true);
+        vm.prank(admin);
+        fp1155.setApprovalForAll(address(sportsbook), true);
+        
+        sportsbook.createSeasonWithFights(
+            seasonId,
+            cutOffTime,
+            SEASON_TOKEN_ID,
+            fightConfigs,
+            fightPrizePoolAmounts
+        );
+        
+        // User makes prediction
+        vm.prank(user1);
+        sportsbook.lockPredictionsBatch(seasonId, _toArray(0), _toArray(0), _toArray(20));
+        
+        // Resolve season
+        uint8[] memory winningOutcomes = new uint8[](1);
+        winningOutcomes[0] = 0; // User wins
+        
+        sportsbook.resolveSeason(seasonId, winningOutcomes);
+        
+        // Get settlement time and CLAIM_WINDOW
+        (, , , , uint256 settlementTime) = sportsbook.seasons(seasonId);
+        uint256 CLAIM_WINDOW = sportsbook.CLAIM_WINDOW();
+        
+        // Advance time to middle of claim window
+        vm.warp(settlementTime + CLAIM_WINDOW / 2);
+        
+        // User should be able to claim within claim window
+        uint256 balanceBefore = fp1155.balanceOf(user1, SEASON_TOKEN_ID);
+        vm.prank(user1);
+        sportsbook.claim(seasonId);
+        uint256 balanceAfter = fp1155.balanceOf(user1, SEASON_TOKEN_ID);
+        
+        assertGt(balanceAfter, balanceBefore);
+        console2.log("Claim successful within CLAIM_WINDOW");
+    }
+
     // Helper functions
     function _toArray(uint256 a) internal pure returns (uint256[] memory) {
         uint256[] memory arr = new uint256[](1);
