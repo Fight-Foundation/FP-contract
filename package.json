@@ -1,0 +1,34 @@
+{
+  "name": "fight-fp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "hardhat compile",
+    "clean": "hardhat clean",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "lint": "echo 'no linter configured'",
+    "deploy": "hardhat run --network bscTestnet scripts/deploy.ts",
+    "sign:claim": "ts-node tools/sign-claim.ts",
+    "submit:claim": "ts-node tools/submit-claim.ts",
+    "env:check:deploy": "ts-node tools/validate-env.ts deploy",
+    "env:check:sign-claim": "ts-node tools/validate-env.ts sign-claim",
+    "env:check:submit-claim": "ts-node tools/validate-env.ts submit-claim",
+    "env:check:verify": "ts-node tools/validate-env.ts verify"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "dotenv": "^17.2.3",
+    "hardhat": "^2.26.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0"
+  }
+}

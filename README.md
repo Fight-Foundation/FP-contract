@@ -27,6 +27,18 @@ Client utility: `tools/submit-claim.ts`
 - Burn (to == 0): always allowed, even when LOCKED
 - Transfer (from != 0 and to != 0): season must be OPEN AND both endpoints must be either allowlisted or have TRANSFER_AGENT role
 
+### Agent transfers (no user approval)
+Some programs (like custody, escrow or wagering) need to move user FP without users setting `setApprovalForAll`. The contract exposes an agent-only method:
+
+- `agentTransferFrom(address from, address to, uint256 seasonId, uint256 amount, bytes data)` — callable only by addresses with `TRANSFER_AGENT_ROLE`.
+
+Behavior and guards:
+- Still enforces all standard rules in `_update` (season must be OPEN for transfers; pause blocks ops)
+- Endpoint checks: both `from` and `to` must pass the endpoint rule. An address passes this rule if it’s on the allowlist OR it has `TRANSFER_AGENT_ROLE`.
+- Practically, the agent itself doesn’t need to be on the allowlist if it holds `TRANSFER_AGENT_ROLE`; end-users must be allowlisted for transfers involving them unless they also hold the agent role.
+
+Sample integration: `src/Deposit.sol` uses `agentTransferFrom` to pull tokens from a user into the contract, and to send them back during withdraws. The contract must be granted `TRANSFER_AGENT_ROLE` to operate.
+
 ### Season lifecycle
 - OPEN: normal behavior (allowlist enforced on transfers)
 - LOCKED: no minting; no transfers; burns remain allowed
@@ -156,9 +168,51 @@ cast send $FP1155 "pause()"   --rpc-url "$RPC" --private-key "$PAUSER_PK"
 cast send $FP1155 "unpause()" --rpc-url "$RPC" --private-key "$PAUSER_PK"
 ```
 
-Signer rotation:
-- Grant the new signer: `grantRole(CLAIM_SIGNER_ROLE, newSigner)`
-- Revoke the old signer: `revokeRole(CLAIM_SIGNER_ROLE, oldSigner)`
+### Agent setup (example with Deposit)
+```bash
+# grant TRANSFER_AGENT_ROLE to the Deposit contract
+cast send $FP1155 "grantRole(bytes32,address)" $(cast keccak TRANSFER_AGENT_ROLE) $DEPOSIT --rpc-url "$RPC" --private-key "$ADMIN_PK"
+
+# allowlist users that will interact (required for endpoint checks)
+cast send $FP1155 "setTransferAllowlist(address,bool)" $USER true --rpc-url "$RPC" --private-key "$ADMIN_PK"
+```
+
+### Role revocation and rotation runbook
+Use these steps to rotate or revoke sensitive roles (CLAIM_SIGNER, TRANSFER_AGENT, MINTER, PAUSER, SEASON_ADMIN). Ensure you have `DEFAULT_ADMIN_ROLE` to administer roles.
+
+1) Verify current assignments
+```bash
+cast call $FP1155 "hasRole(bytes32,address)(bool)" $(cast keccak CLAIM_SIGNER_ROLE) $OLD_SIGNER --rpc-url "$RPC"
+cast call $FP1155 "hasRole(bytes32,address)(bool)" $(cast keccak TRANSFER_AGENT_ROLE) $AGENT --rpc-url "$RPC"
+```
+
+2) Grant the new principal (if rotating)
+```bash
+cast send $FP1155 "grantRole(bytes32,address)" $(cast keccak CLAIM_SIGNER_ROLE) $NEW_SIGNER --rpc-url "$RPC" --private-key "$ADMIN_PK"
+cast send $FP1155 "grantRole(bytes32,address)" $(cast keccak TRANSFER_AGENT_ROLE) $NEW_AGENT --rpc-url "$RPC" --private-key "$ADMIN_PK"
+```
+
+3) Revoke the old principal
+```bash
+cast send $FP1155 "revokeRole(bytes32,address)" $(cast keccak CLAIM_SIGNER_ROLE) $OLD_SIGNER --rpc-url "$RPC" --private-key "$ADMIN_PK"
+cast send $FP1155 "revokeRole(bytes32,address)" $(cast keccak TRANSFER_AGENT_ROLE) $AGENT --rpc-url "$RPC" --private-key "$ADMIN_PK"
+```
+
+4) Optional: Encourage principals to self-`renounceRole` from their own address
+```bash
+cast send $FP1155 "renounceRole(bytes32,address)" $(cast keccak CLAIM_SIGNER_ROLE) $ME --rpc-url "$RPC" --private-key "$ME_PK"
+```
+
+5) Post-change validation
+```bash
+cast call $FP1155 "hasRole(bytes32,address)(bool)" $(cast keccak CLAIM_SIGNER_ROLE) $NEW_SIGNER --rpc-url "$RPC"
+cast call $FP1155 "hasRole(bytes32,address)(bool)" $(cast keccak TRANSFER_AGENT_ROLE) $NEW_AGENT --rpc-url "$RPC"
+```
+
+Emergency response tips:
+- Pause the contract to halt mint/transfer/burn if an agent/signing key is compromised.
+- Revoke the compromised role immediately; if necessary, lock affected seasons to freeze transfers.
+- Remove suspicious addresses from the allowlist.
 
 ## Guards, errors, and edge cases
 - Mint when LOCKED → `mint: season locked`
@@ -182,6 +236,7 @@ Signer rotation:
 	- `mintBatch(address,uint256[],uint256[],bytes)` — MINTER_ROLE
 	- `burn(address,uint256,uint256)` and `burnBatch(...)` — holder can burn (allowed even when LOCKED)
 	- `safeTransferFrom/safeBatchTransferFrom` — require season OPEN and endpoints allowed
+	- `agentTransferFrom(address,address,uint256,uint256,bytes)` — TRANSFER_AGENT_ROLE can move tokens without prior user approval; still subject to season/allowlist/pause guards
 - Claims
 	- `claim(uint256 seasonId,uint256 amount,uint256 deadline,bytes signature)` — user call; requires valid EIP-712 signature from `CLAIM_SIGNER_ROLE`; increments `nonces[user]`
 	- `nonces(address)` — current nonce per user
