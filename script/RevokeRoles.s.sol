@@ -21,7 +21,8 @@ contract RevokeRoles is Script {
         bytes32 role = keccak256(bytes(roleName));
 
         console2.log("Using token:", tokenAddr);
-        console2.log("Role keccak:", role);
+        console2.log("Role keccak:");
+        console2.logBytes32(role);
 
         // Revoke
         if (revokeAccount != address(0)) {

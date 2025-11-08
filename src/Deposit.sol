@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
-import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
 import {FP1155} from "./FP1155.sol";
 import {ERC1155Holder} from "openzeppelin-contracts/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
@@ -16,7 +14,7 @@ import {ERC1155Holder} from "openzeppelin-contracts/contracts/token/ERC1155/util
  *         allow this contract to move their tokens when depositing.
  */
 contract Deposit is ERC1155Holder {
-    FP1155 public immutable fp;
+    FP1155 public immutable FP;
 
     // user => seasonId => deposited balance held by this contract
     mapping(address => mapping(uint256 => uint256)) public deposited;
@@ -25,7 +23,7 @@ contract Deposit is ERC1155Holder {
     event Withdrawn(address indexed user, uint256 indexed seasonId, uint256 amount);
 
     constructor(FP1155 _fp) {
-        fp = _fp;
+        FP = _fp;
     }
 
     /**
@@ -36,7 +34,7 @@ contract Deposit is ERC1155Holder {
     function deposit(uint256 seasonId, uint256 amount) external {
         require(amount > 0, "amount=0");
     // Agent pull without user approval; relies on TRANSFER_AGENT_ROLE granted to this contract
-    fp.agentTransferFrom(msg.sender, address(this), seasonId, amount, "");
+        FP.agentTransferFrom(msg.sender, address(this), seasonId, amount, "");
         deposited[msg.sender][seasonId] += amount;
         emit Deposited(msg.sender, seasonId, amount);
     }
@@ -51,7 +49,7 @@ contract Deposit is ERC1155Holder {
         require(bal >= amount, "withdraw: insufficient");
         deposited[msg.sender][seasonId] = bal - amount;
         // Transfer from this contract back to user
-        fp.safeTransferFrom(address(this), msg.sender, seasonId, amount, "");
+        FP.safeTransferFrom(address(this), msg.sender, seasonId, amount, "");
         emit Withdrawn(msg.sender, seasonId, amount);
     }
 }

@@ -177,6 +177,189 @@ Both deployments include:
 7. ⏳ Monitor events and transactions
 8. ⏳ Consider admin key migration to multisig (for production)
 
+---
+
+## Booster Contract Deployment
+
+The **Booster** contract (`src/Booster.sol`) implements UFC Strike Now pick'em functionality where users boost fight predictions with FP tokens.
+
+### Prerequisites
+
+Before deploying Booster:
+1. ✅ FP1155 contract must be deployed
+2. ✅ Know the FP1155 contract address
+3. ✅ Have operator address(es) ready
+4. ✅ Optional: list of initial users to allowlist
+
+### Deploy Script: `DeployBooster.s.sol`
+
+**Environment Variables:**
+```bash
+PRIVATE_KEY              # Deployer private key
+FP1155_ADDRESS          # Deployed FP1155 contract
+ADMIN_ADDRESS           # Admin for Booster (defaults to deployer)
+OPERATOR_ADDRESS        # Operator address (required)
+USER_ADDRESSES          # Optional comma-separated allowlist (e.g., "0x...,0x...")
+```
+
+**Deploy to Testnet:**
+```bash
+export PRIVATE_KEY=...
+export FP1155_ADDRESS=0xD0B591751E6aa314192810471461bDE963796306
+export OPERATOR_ADDRESS=0x...
+export USER_ADDRESSES=0x...,0x...
+
+forge script script/DeployBooster.s.sol \
+  --rpc-url $BSC_TESTNET_RPC_URL \
+  --broadcast --verify \
+  -vvvv
+```
+
+**Deploy to Mainnet:**
+```bash
+forge script script/DeployBooster.s.sol \
+  --rpc-url $BSC_RPC_URL \
+  --broadcast --verify \
+  -vvvv
+```
+
+**What the script does:**
+1. Deploy Booster contract with FP1155 address and admin
+2. Grant `OPERATOR_ROLE` to operator address
+3. Grant Booster contract `TRANSFER_AGENT_ROLE` on FP1155
+4. Allowlist Booster contract in FP1155
+5. Allowlist operator address in FP1155
+6. Optionally allowlist initial users in FP1155
+
+### Post-Deployment Configuration
+
+**Verify Booster Deployment:**
+```bash
+# Check FP1155 address
+cast call $BOOSTER_ADDRESS "FP()(address)" --rpc-url $RPC_URL
+
+# Check operator role
+cast call $BOOSTER_ADDRESS \
+  "hasRole(bytes32,address)(bool)" \
+  $(cast keccak OPERATOR_ROLE) \
+  $OPERATOR_ADDRESS \
+  --rpc-url $RPC_URL
+```
+
+**Grant Additional Operators:**
+```bash
+cast send $BOOSTER_ADDRESS \
+  "grantRole(bytes32,address)" \
+  $(cast keccak OPERATOR_ROLE) \
+  $NEW_OPERATOR \
+  --rpc-url $RPC_URL \
+  --private-key $ADMIN_PK
+```
+
+**Allowlist More Users:**
+```bash
+cast send $FP1155_ADDRESS \
+  "setTransferAllowlist(address,bool)" \
+  $USER_ADDRESS \
+  true \
+  --rpc-url $RPC_URL \
+  --private-key $ADMIN_PK
+```
+
+### Event Lifecycle Management
+
+Use `script/CreateEventAndSeed.s.sol` for one-shot event provisioning:
+
+**Environment Setup:**
+```bash
+export PRIVATE_KEY=...              # Operator key
+export FP1155_ADDRESS=0x...
+export BOOSTER_ADDRESS=0x...
+export EVENT_ID=UFC_301
+export SEASON_ID=1
+export FIGHT_IDS=1,2,3
+export CLAIM_DEADLINE_OFFSET=604800 # 7 days
+export BONUS_AMOUNTS=1000,0,500     # Per-fight bonuses
+export BOOST_AMOUNTS=250,250,250    # Seed boosts
+export BOOST_WINNERS=RED,BLUE,RED
+export BOOST_METHODS=KNOCKOUT,DECISION,SUBMISSION
+```
+
+**Create Event:**
+```bash
+forge script script/CreateEventAndSeed.s.sol \
+  --rpc-url $RPC_URL \
+  --broadcast --legacy \
+  -vvvv
+```
+
+**Resolve Fights (add to env):**
+```bash
+export RESOLVE=true
+export RESULT_WINNERS=RED,BLUE,RED
+export RESULT_METHODS=KNOCKOUT,DECISION,SUBMISSION
+export POINTS_WINNER=10,10,10
+export POINTS_WINNER_METHOD=25,25,25
+export TOTAL_WINNING_POINTS=350,280,420  # Offchain calculated
+```
+
+**Purge After Deadline:**
+```bash
+cast send $BOOSTER_ADDRESS \
+  "purgeEvent(string,address)" \
+  "UFC_301" \
+  $TREASURY_ADDRESS \
+  --rpc-url $RPC_URL \
+  --private-key $OPERATOR_PK
+```
+
+### Monitoring
+
+**Key Events to Monitor:**
+- `EventCreated(eventId, fightIds, seasonId)`
+- `BoostPlaced(eventId, fightId, user, boostIndex, amount, winner, method)`
+- `FightResultSubmitted(eventId, fightId, winner, method, ...)`
+- `RewardClaimed(eventId, fightId, user, boostIndex, payout, points)`
+- `EventPurged(eventId, recipient, amount)`
+
+**Query Fight State:**
+```bash
+cast call $BOOSTER_ADDRESS \
+  "getFight(string,uint256)" \
+  "UFC_301" 1 \
+  --rpc-url $RPC_URL
+```
+
+**Quote User Claimable:**
+```bash
+cast call $BOOSTER_ADDRESS \
+  "quoteClaimable(string,uint256,address,bool)(uint256,uint256,uint256)" \
+  "UFC_301" 1 $USER_ADDRESS true \
+  --rpc-url $RPC_URL
+```
+
+### Security Checklist
+
+- [ ] Booster has `TRANSFER_AGENT_ROLE` on FP1155
+- [ ] Booster is allowlisted in FP1155
+- [ ] Operator is allowlisted in FP1155
+- [ ] All participating users are allowlisted in FP1155
+- [ ] Operator keys are secured (consider multisig)
+- [ ] Offchain points calculation is audited and tested
+- [ ] Claim deadlines are set and communicated to users
+- [ ] Monitoring/alerting is set up for critical events
+- [ ] Emergency pause procedure is documented
+
+### Testnet Addresses (Example)
+
+```bash
+FP1155_ADDRESS=0xD0B591751E6aa314192810471461bDE963796306
+BOOSTER_ADDRESS=0x...  # Update after deployment
+OPERATOR_ADDRESS=0x...
+```
+
+---
+
 ## Support
 
 For contract interaction examples, see:

@@ -17,18 +17,18 @@ contract GrantRoles is Script {
         console2.log("Using token:", tokenAddr);
 
         // Grant MINTER_ROLE
-        bytes32 MINTER = token.MINTER_ROLE();
-        if (!token.hasRole(MINTER, minter)) {
-            token.grantRole(MINTER, minter);
+        bytes32 minterRole = token.MINTER_ROLE();
+        if (!token.hasRole(minterRole, minter)) {
+            token.grantRole(minterRole, minter);
             console2.log("Granted MINTER_ROLE to:", minter);
         } else {
             console2.log("MINTER_ROLE already granted:", minter);
         }
 
         // Grant TRANSFER_AGENT_ROLE
-        bytes32 AGENT = token.TRANSFER_AGENT_ROLE();
-        if (!token.hasRole(AGENT, agent)) {
-            token.grantRole(AGENT, agent);
+        bytes32 transferAgentRole = token.TRANSFER_AGENT_ROLE();
+        if (!token.hasRole(transferAgentRole, agent)) {
+            token.grantRole(transferAgentRole, agent);
             console2.log("Granted TRANSFER_AGENT_ROLE to:", agent);
         } else {
             console2.log("TRANSFER_AGENT_ROLE already granted:", agent);

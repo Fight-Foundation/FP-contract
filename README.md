@@ -1,6 +1,6 @@
 ## FP (Fighting Points) — ERC-1155 on BSC
 
-Seasonal, non-tradable reputation points. Each season is a tokenId. Transfers are restricted to an allowlist. At end of season, it’s LOCKED (no mint/transfer; burns allowed). Built with OpenZeppelin and Foundry (TDD).
+Seasonal, non-tradable reputation points. Each season is a tokenId. Transfers are restricted to an allowlist. At end of season, it's LOCKED (no mint/transfer; burns allowed). Built with OpenZeppelin and Foundry (TDD).
 
 ### Key features
 - ERC-1155 with pause, burn, and access control
@@ -9,11 +9,25 @@ Seasonal, non-tradable reputation points. Each season is a tokenId. Transfers ar
 - Season status: OPEN or LOCKED (irreversible)
 - Mint either by MINTER role or via user-submitted EIP-712 claim (signed by CLAIM_SIGNER); burn allowed by holders (even when LOCKED)
 
-Contract: `src/FP1155.sol`
-Tests: `test/FP1155.t.sol`
-Deploy script: `script/Deploy.s.sol`
-Server utility: `tools/sign-claim.ts`
-Client utility: `tools/submit-claim.ts`
+**Contracts:**
+- `src/FP1155.sol` — Core FP token
+- `src/Booster.sol` — UFC Strike Now pick'em boosting
+- `src/Deposit.sol` — Sample agent deposit/withdraw
+
+**Tests:**
+- `test/FP1155.t.sol`
+- `test/Booster.t.sol`
+- `test/Deposit.t.sol`
+
+**Deploy scripts:**
+- `script/Deploy.s.sol` — Deploy FP1155
+- `script/DeployBooster.s.sol` — Deploy Booster with roles
+- `script/CreateEventAndSeed.s.sol` — Lifecycle helper (create event, seed boosts, resolve)
+- `script/GrantRoles.s.sol` / `script/RevokeRoles.s.sol` — Role management
+
+**Server utilities:**
+- `tools/sign-claim.ts`
+- `tools/submit-claim.ts`
 
 ## How it works
 
@@ -318,3 +332,241 @@ Additional notes:
 ## Next steps
 - Add ignition scripts or TypeScript wrappers if integrating with a frontend.
 - Consider adding AccessControlDefaultAdminRules for time-delayed admin ops.
+
+---
+
+## Booster Contract
+
+`src/Booster.sol` implements a UFC Strike Now pick'em booster where users stake FP on fight predictions, managers can deposit bonus pools, and winners split the combined pool proportionally.
+
+### Key Features
+- **Events and Fights**: Each event has multiple fights; users boost their predictions for individual fights
+- **Dual Pools**: Each fight has an original pool (user stakes) + bonus pool (manager deposits)
+- **Offchain Points Calculation**: Server submits `totalWinningPoints` after offchain calculation
+- **Proportional Rewards**: Winners receive `(userPoints / totalWinningPoints) * totalPool`
+- **Claim Deadlines**: Optional per-event deadline; after deadline, operator can purge unclaimed funds
+- **Transfer Agent Integration**: Uses FP1155 `agentTransferFrom` for seamless FP transfers
+
+### Architecture
+
+**Roles:**
+- `OPERATOR_ROLE` — Single privileged role for all admin/management operations (create events, deposit bonuses, submit results, set deadlines, purge)
+
+**Types:**
+- `FightStatus`: OPEN → CLOSED → RESOLVED (forward-only state machine)
+- `Corner`: RED, BLUE, NONE
+- `WinMethod`: KNOCKOUT, SUBMISSION, DECISION, NO_CONTEST
+
+**Scoring:**
+- Users predict winner + method
+- Correct winner only → `pointsForWinner` points
+- Correct winner + method → `pointsForWinnerMethod` points
+- Wrong winner → 0 points
+
+### User Flow
+
+1. **Place Boosts** (`placeBoosts`):
+   - User stakes FP on fight predictions before fight status is CLOSED
+   - Can place multiple boosts in one transaction
+   - User must be allowlisted in FP1155
+
+2. **Add to Existing Boost** (`addToBoost`):
+   - Increase stake on an existing boost before fight closes
+   - Same prediction (winner + method) maintained
+
+3. **Claim Rewards** (`claimReward`):
+   - After fight is RESOLVED and results submitted
+   - Calculate payout: `(userPoints / totalWinningPoints) * (originalPool + bonusPool)`
+   - Transfer FP to user
+   - Must claim before event deadline (if set)
+
+### Operator Flow
+
+1. **Create Event** (`createEvent`):
+   - Define event ID, fight IDs, and season ID
+   - Initialize all fights as OPEN
+
+2. **Deposit Bonuses** (`depositBonus`):
+   - Add FP to fight bonus pools before resolution
+   - Optional; fights can have zero bonus
+
+3. **Update Fight Status** (`updateFightStatus`):
+   - Optional manual control to close betting windows
+   - Forward-only: OPEN → CLOSED → RESOLVED
+
+4. **Submit Results** (`submitFightResult`):
+   - After fight ends, operator submits:
+     - Actual winner and method
+     - Points awarded for correct predictions
+     - `totalWinningPoints` (sum of all winning users' points, calculated offchain)
+   - Sets fight status to RESOLVED
+
+5. **Set Claim Deadline** (`setEventClaimDeadline`):
+   - Optional; set unix timestamp after which claims are rejected
+   - Non-decreasing (can extend but not shorten)
+   - 0 = no deadline
+
+6. **Purge Unclaimed Funds** (`purgeEvent`):
+   - After claim deadline passes
+   - Sweep all unclaimed FP from resolved fights to recipient
+   - Emits `FightPurged` and `EventPurged` events
+
+### View Functions
+
+- `getEvent(eventId)` → seasonId, fightIds, exists
+- `getEventClaimDeadline(eventId)` → deadline timestamp
+- `getFight(eventId, fightId)` → status, winner, method, pools, points, claimed amounts
+- `getUserBoosts(eventId, fightId, user)` → array of user's boosts
+- `getUserBoostIndices(eventId, fightId, user)` → array of indices for claiming
+- `calculateUserPoints(...)` → points earned for a prediction
+- `quoteClaimable(eventId, fightId, user, enforceDeadline)` → total claimable, original share, bonus share
+
+### Integration Requirements
+
+**FP1155 Setup:**
+1. Grant Booster contract `TRANSFER_AGENT_ROLE`
+2. Allowlist Booster contract (`setTransferAllowlist(boosterAddress, true)`)
+3. Allowlist operator address
+4. Allowlist all participating users
+
+**Booster Setup:**
+1. Deploy Booster with FP1155 address and admin
+2. Grant `OPERATOR_ROLE` to operator address(es)
+
+### Events
+
+- `EventCreated`, `EventClaimDeadlineUpdated`
+- `FightStatusUpdated`, `BonusDeposited`
+- `BoostPlaced`, `BoostIncreased`
+- `FightResultSubmitted`, `RewardClaimed`
+- `FightPurged`, `EventPurged`
+
+### Example Usage
+
+**Deploy and setup:**
+```bash
+# Deploy Booster
+forge script script/DeployBooster.s.sol --rpc-url $RPC_URL --broadcast
+
+# Set env vars for lifecycle helper
+export FP1155_ADDRESS=0x...
+export BOOSTER_ADDRESS=0x...
+export EVENT_ID=UFC_301
+export SEASON_ID=1
+export FIGHT_IDS=1,2,3
+```
+
+**Create event with bonuses and seed boosts:**
+```bash
+export CLAIM_DEADLINE_OFFSET=604800  # 7 days
+export BONUS_AMOUNTS=1000,0,500
+export BOOST_AMOUNTS=250,250,250
+export BOOST_WINNERS=RED,BLUE,RED
+export BOOST_METHODS=KNOCKOUT,DECISION,SUBMISSION
+
+forge script script/CreateEventAndSeed.s.sol --rpc-url $RPC_URL --broadcast
+```
+
+**User places boosts:**
+```bash
+cast send $BOOSTER_ADDRESS \
+  "placeBoosts(string,(uint256,uint256,uint8,uint8)[])" \
+  "UFC_301" \
+  "[(1,100,0,0),(2,200,1,2)]" \
+  --rpc-url $RPC_URL --private-key $USER_PK
+```
+
+**Operator submits results:**
+```bash
+cast send $BOOSTER_ADDRESS \
+  "submitFightResult(string,uint256,uint8,uint8,uint256,uint256,uint256)" \
+  "UFC_301" 1 0 0 10 25 350 \
+  --rpc-url $RPC_URL --private-key $OPERATOR_PK
+```
+
+**User claims rewards:**
+```bash
+# Get user's boost indices first
+cast call $BOOSTER_ADDRESS \
+  "getUserBoostIndices(string,uint256,address)(uint256[])" \
+  "UFC_301" 1 $USER_ADDRESS --rpc-url $RPC_URL
+
+# Claim using indices
+cast send $BOOSTER_ADDRESS \
+  "claimReward(string,uint256,uint256[])" \
+  "UFC_301" 1 "[0,1]" \
+  --rpc-url $RPC_URL --private-key $USER_PK
+```
+
+**Quote claimable before claiming:**
+```bash
+cast call $BOOSTER_ADDRESS \
+  "quoteClaimable(string,uint256,address,bool)(uint256,uint256,uint256)" \
+  "UFC_301" 1 $USER_ADDRESS true \
+  --rpc-url $RPC_URL
+```
+
+### Lifecycle Script: `CreateEventAndSeed.s.sol`
+
+One-shot helper to create an event, set deadline, deposit bonuses, seed boosts, and optionally resolve fights using environment variables.
+
+**Environment Variables:**
+```bash
+PRIVATE_KEY                # Operator private key
+FP1155_ADDRESS            # Deployed FP1155 contract
+BOOSTER_ADDRESS           # Deployed Booster contract
+EVENT_ID                  # Event identifier (e.g., "UFC_301")
+SEASON_ID                 # FP season tokenId
+FIGHT_IDS                 # Comma-separated (e.g., "1,2,3")
+CLAIM_DEADLINE_OFFSET     # Seconds from now (0 = no deadline)
+BONUS_AMOUNTS             # Comma-separated per fight (e.g., "1000,0,500")
+BOOST_AMOUNTS             # Operator seed boosts (e.g., "250,250,250")
+BOOST_WINNERS             # Predictions: RED|BLUE|NONE (e.g., "RED,BLUE,RED")
+BOOST_METHODS             # Predictions: KNOCKOUT|SUBMISSION|DECISION|NO_CONTEST
+RESOLVE                   # true to submit results
+RESULT_WINNERS            # Actual winners (e.g., "RED,BLUE,RED")
+RESULT_METHODS            # Actual methods (e.g., "KNOCKOUT,DECISION,SUBMISSION")
+POINTS_WINNER             # Points for correct winner (e.g., "10,10,10")
+POINTS_WINNER_METHOD      # Points for winner+method (e.g., "25,25,25")
+TOTAL_WINNING_POINTS      # Offchain sum of winning points (e.g., "100,80,60")
+```
+
+**Run:**
+```bash
+forge script script/CreateEventAndSeed.s.sol --rpc-url $RPC_URL --broadcast --legacy -vvvv
+```
+
+**Notes:**
+- Script automatically allowlists operator and Booster in FP1155
+- Omit optional arrays to skip steps (e.g., leave `BONUS_AMOUNTS` empty to skip bonuses)
+- Resolution requires `RESOLVE=true` and `TOTAL_WINNING_POINTS` > 0 per fight
+- `TOTAL_WINNING_POINTS` must equal sum of all winning users' points offchain
+- Set `CLAIM_DEADLINE_OFFSET=0` for no deadline
+
+**Purge after deadline:**
+```bash
+cast send $BOOSTER_ADDRESS \
+  "purgeEvent(string,address)" \
+  "UFC_301" $RECIPIENT_ADDRESS \
+  --rpc-url $RPC_URL --private-key $OPERATOR_PK
+```
+
+### Security Considerations
+
+- **OPERATOR_ROLE is powerful**: Can create events, submit results, and purge funds
+  - Use multisig or timelock for production
+  - Rotate keys regularly
+- **Offchain calculation trust**: `totalWinningPoints` must be accurate
+  - Incorrect values distort payouts
+  - Consider on-chain verification or dispute mechanism for production
+- **Deadline enforcement**: Claims rejected after deadline
+  - Set reasonable deadlines (e.g., 7-30 days)
+  - Communicate clearly to users
+- **Purge mechanism**: Operator can sweep unclaimed funds after deadline
+  - Ensure deadline is well-communicated
+  - Consider grace period before purge
+- **FP1155 integration**: Both users and Booster must be allowlisted
+  - Verify allowlist before operations
+  - Monitor transfer agent role assignments
+
+---
