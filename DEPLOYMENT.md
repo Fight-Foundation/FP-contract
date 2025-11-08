@@ -191,45 +191,36 @@ Before deploying Booster:
 3. ✅ Have operator address(es) ready
 4. ✅ Optional: list of initial users to allowlist
 
-### Deploy Script: `DeployBooster.s.sol`
+### Deployment (Booster)
 
-**Environment Variables:**
-```bash
-PRIVATE_KEY              # Deployer private key
-FP1155_ADDRESS          # Deployed FP1155 contract
-ADMIN_ADDRESS           # Admin for Booster (defaults to deployer)
-OPERATOR_ADDRESS        # Operator address (required)
-USER_ADDRESSES          # Optional comma-separated allowlist (e.g., "0x...,0x...")
-```
+Deploy Booster with a simple cast transaction (example assumes constructor `(address fp1155, address admin)` – adjust if different):
 
-**Deploy to Testnet:**
 ```bash
-export PRIVATE_KEY=...
 export FP1155_ADDRESS=0xD0B591751E6aa314192810471461bDE963796306
-export OPERATOR_ADDRESS=0x...
-export USER_ADDRESSES=0x...,0x...
+export ADMIN_ADDRESS=$DEPLOYER
 
-forge script script/DeployBooster.s.sol \
-  --rpc-url $BSC_TESTNET_RPC_URL \
-  --broadcast --verify \
-  -vvvv
+cast send $DEPLOYER_ADDRESS \
+  "deployBooster(address,address)" \
+  $FP1155_ADDRESS $ADMIN_ADDRESS \
+  --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY # <— replace with actual deployment method
 ```
 
-**Deploy to Mainnet:**
+Then wire roles / allowlist:
 ```bash
-forge script script/DeployBooster.s.sol \
-  --rpc-url $BSC_RPC_URL \
-  --broadcast --verify \
-  -vvvv
-```
+# Grant OPERATOR_ROLE
+cast send $BOOSTER_ADDRESS \
+  "grantRole(bytes32,address)" $(cast keccak OPERATOR_ROLE) $OPERATOR_ADDRESS \
+  --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
 
-**What the script does:**
-1. Deploy Booster contract with FP1155 address and admin
-2. Grant `OPERATOR_ROLE` to operator address
-3. Grant Booster contract `TRANSFER_AGENT_ROLE` on FP1155
-4. Allowlist Booster contract in FP1155
-5. Allowlist operator address in FP1155
-6. Optionally allowlist initial users in FP1155
+# FP1155: grant TRANSFER_AGENT_ROLE to Booster
+cast send $FP1155_ADDRESS \
+  "grantRole(bytes32,address)" $(cast keccak TRANSFER_AGENT_ROLE) $BOOSTER_ADDRESS \
+  --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
+
+# Allowlist Booster + operator
+cast send $FP1155_ADDRESS "setTransferAllowlist(address,bool)" $BOOSTER_ADDRESS true --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
+cast send $FP1155_ADDRESS "setTransferAllowlist(address,bool)" $OPERATOR_ADDRESS true --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
+```
 
 ### Post-Deployment Configuration
 
@@ -268,40 +259,7 @@ cast send $FP1155_ADDRESS \
 
 ### Event Lifecycle Management
 
-Use `script/CreateEventAndSeed.s.sol` for one-shot event provisioning:
-
-**Environment Setup:**
-```bash
-export PRIVATE_KEY=...              # Operator key
-export FP1155_ADDRESS=0x...
-export BOOSTER_ADDRESS=0x...
-export EVENT_ID=UFC_301
-export SEASON_ID=1
-export FIGHT_IDS=1,2,3
-export CLAIM_DEADLINE_OFFSET=604800 # 7 days
-export BONUS_AMOUNTS=1000,0,500     # Per-fight bonuses
-export BOOST_AMOUNTS=250,250,250    # Seed boosts
-export BOOST_WINNERS=RED,BLUE,RED
-export BOOST_METHODS=KNOCKOUT,DECISION,SUBMISSION
-```
-
-**Create Event:**
-```bash
-forge script script/CreateEventAndSeed.s.sol \
-  --rpc-url $RPC_URL \
-  --broadcast --legacy \
-  -vvvv
-```
-
-**Resolve Fights (add to env):**
-```bash
-export RESOLVE=true
-export RESULT_WINNERS=RED,BLUE,RED
-export RESULT_METHODS=KNOCKOUT,DECISION,SUBMISSION
-export POINTS_WINNER=10,10,10
-export POINTS_WINNER_METHOD=25,25,25
-export TOTAL_WINNING_POINTS=350,280,420  # Offchain calculated
-```
+Provision events manually or with your own script. (Previous one-shot script references removed pending update.)
 
 **Purge After Deadline:**
 ```bash
@@ -330,13 +288,14 @@ cast call $BOOSTER_ADDRESS \
   --rpc-url $RPC_URL
 ```
 
-**Quote User Claimable:**
+**Quote User Claimable (per fight):**
 ```bash
 cast call $BOOSTER_ADDRESS \
   "quoteClaimable(string,uint256,address,bool)(uint256,uint256,uint256)" \
   "UFC_301" 1 $USER_ADDRESS true \
   --rpc-url $RPC_URL
 ```
+Aggregate over all fights if you need a total prior to `claimReward(eventId)`.
 
 ### Security Checklist
 

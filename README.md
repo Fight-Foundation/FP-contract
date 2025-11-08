@@ -21,9 +21,8 @@ Seasonal, non-tradable reputation points. Each season is a tokenId. Transfers ar
 
 **Deploy scripts:**
 - `script/Deploy.s.sol` — Deploy FP1155
-- `script/DeployBooster.s.sol` — Deploy Booster with roles
-- `script/CreateEventAndSeed.s.sol` — Lifecycle helper (create event, seed boosts, resolve)
 - `script/GrantRoles.s.sol` / `script/RevokeRoles.s.sol` — Role management
+	- (Booster deployment currently done via manual cast/script; update when dedicated script is added)
 
 **Server utilities:**
 - `tools/sign-claim.ts`
@@ -342,8 +341,13 @@ Additional notes:
 ### Key Features
 - **Events and Fights**: Each event has multiple fights; users boost their predictions for individual fights
 - **Dual Pools**: Each fight has an original pool (user stakes) + bonus pool (manager deposits)
-- **Offchain Points Calculation**: Server submits `totalWinningPoints` after offchain calculation
+- **Offchain Points Calculation**: Server submits `totalWinningPoints` after offchain calculation with guardrails
 - **Proportional Rewards**: Winners receive `(userPoints / totalWinningPoints) * totalPool`
+- **Event-wide Claiming**: Single call `claimReward(eventId)` claims across all resolved fights for the caller
+- **No-Contest Refunds**: `cancelFight(eventId,fightId)` lets operator refund user principals on cancelled/no-contest fights
+- **Boost Cutoff**: Per-fight `boostCutoff` timestamp blocks new boosts/additions after cutoff
+- **Minimum Boost Amount**: Global `minBoostAmount` deters dust spam
+- **Helper Views**: `totalPool(eventId,fightId)` returns original+bonus pool
 - **Claim Deadlines**: Optional per-event deadline; after deadline, operator can purge unclaimed funds
 - **Transfer Agent Integration**: Uses FP1155 `agentTransferFrom` for seamless FP transfers
 
@@ -374,11 +378,11 @@ Additional notes:
    - Increase stake on an existing boost before fight closes
    - Same prediction (winner + method) maintained
 
-3. **Claim Rewards** (`claimReward`):
-   - After fight is RESOLVED and results submitted
-   - Calculate payout: `(userPoints / totalWinningPoints) * (originalPool + bonusPool)`
-   - Transfer FP to user
-   - Must claim before event deadline (if set)
+3. **Claim Rewards** (`claimReward(eventId)`):
+	- After fights are RESOLVED and results submitted
+	- Claims rewards across all resolved fights in the event for the caller
+	- Skips unresolved fights and losing boosts automatically
+	- Must claim before event deadline (if set)
 
 ### Operator Flow
 
@@ -406,7 +410,16 @@ Additional notes:
    - Non-decreasing (can extend but not shorten)
    - 0 = no deadline
 
-6. **Purge Unclaimed Funds** (`purgeEvent`):
+6. **Set Boost Cutoff** (`setFightBoostCutoff`):
+	- Per-fight timestamp after which placing new boosts or increasing existing ones is blocked
+
+7. **Set Minimum Boost** (`setMinBoostAmount`):
+	- Enforce a minimum FP amount per boost to avoid spam
+
+8. **Cancel Fight / Refund** (`cancelFight`):
+	- Marks fight as cancelled (no-contest); users can claim their principal back
+
+9. **Purge Unclaimed Funds** (`purgeEvent`):
    - After claim deadline passes
    - Sweep all unclaimed FP from resolved fights to recipient
    - Emits `FightPurged` and `EventPurged` events
@@ -415,11 +428,13 @@ Additional notes:
 
 - `getEvent(eventId)` → seasonId, fightIds, exists
 - `getEventClaimDeadline(eventId)` → deadline timestamp
-- `getFight(eventId, fightId)` → status, winner, method, pools, points, claimed amounts
+- `getFight(eventId, fightId)` → status, winner, method, pools, points, claimed amounts, boostCutoff, cancelled
 - `getUserBoosts(eventId, fightId, user)` → array of user's boosts
-- `getUserBoostIndices(eventId, fightId, user)` → array of indices for claiming
+- `getUserBoostIndices(eventId, fightId, user)` → indices helper (optional; no longer required for claiming)
 - `calculateUserPoints(...)` → points earned for a prediction
 - `quoteClaimable(eventId, fightId, user, enforceDeadline)` → total claimable, original share, bonus share
+- `totalPool(eventId, fightId)` → original + bonus pool combined
+- `minBoostAmount()` → global minimum boost setting
 
 ### Integration Requirements
 
@@ -445,10 +460,7 @@ Additional notes:
 
 **Deploy and setup:**
 ```bash
-# Deploy Booster
-forge script script/DeployBooster.s.sol --rpc-url $RPC_URL --broadcast
-
-# Set env vars for lifecycle helper
+# Deploy Booster (cast or custom script) then configure roles/allowlist:
 export FP1155_ADDRESS=0x...
 export BOOSTER_ADDRESS=0x...
 export EVENT_ID=UFC_301
@@ -456,16 +468,7 @@ export SEASON_ID=1
 export FIGHT_IDS=1,2,3
 ```
 
-**Create event with bonuses and seed boosts:**
-```bash
-export CLAIM_DEADLINE_OFFSET=604800  # 7 days
-export BONUS_AMOUNTS=1000,0,500
-export BOOST_AMOUNTS=250,250,250
-export BOOST_WINNERS=RED,BLUE,RED
-export BOOST_METHODS=KNOCKOUT,DECISION,SUBMISSION
-
-forge script script/CreateEventAndSeed.s.sol --rpc-url $RPC_URL --broadcast
-```
+Create event and seed boosts using cast or your own provisioning script.
 
 **User places boosts:**
 ```bash
@@ -484,21 +487,15 @@ cast send $BOOSTER_ADDRESS \
   --rpc-url $RPC_URL --private-key $OPERATOR_PK
 ```
 
-**User claims rewards:**
+**User claims rewards (event-wide):**
 ```bash
-# Get user's boost indices first
-cast call $BOOSTER_ADDRESS \
-  "getUserBoostIndices(string,uint256,address)(uint256[])" \
-  "UFC_301" 1 $USER_ADDRESS --rpc-url $RPC_URL
-
-# Claim using indices
 cast send $BOOSTER_ADDRESS \
-  "claimReward(string,uint256,uint256[])" \
-  "UFC_301" 1 "[0,1]" \
-  --rpc-url $RPC_URL --private-key $USER_PK
+	"claimReward(string)" \
+	"UFC_301" \
+	--rpc-url $RPC_URL --private-key $USER_PK
 ```
 
-**Quote claimable before claiming:**
+**Quote claimable before claiming (per fight):**
 ```bash
 cast call $BOOSTER_ADDRESS \
   "quoteClaimable(string,uint256,address,bool)(uint256,uint256,uint256)" \
@@ -506,42 +503,15 @@ cast call $BOOSTER_ADDRESS \
   --rpc-url $RPC_URL
 ```
 
-### Lifecycle Script: `CreateEventAndSeed.s.sol`
+### Lifecycle
 
-One-shot helper to create an event, set deadline, deposit bonuses, seed boosts, and optionally resolve fights using environment variables.
-
-**Environment Variables:**
-```bash
-PRIVATE_KEY                # Operator private key
-FP1155_ADDRESS            # Deployed FP1155 contract
-BOOSTER_ADDRESS           # Deployed Booster contract
-EVENT_ID                  # Event identifier (e.g., "UFC_301")
-SEASON_ID                 # FP season tokenId
-FIGHT_IDS                 # Comma-separated (e.g., "1,2,3")
-CLAIM_DEADLINE_OFFSET     # Seconds from now (0 = no deadline)
-BONUS_AMOUNTS             # Comma-separated per fight (e.g., "1000,0,500")
-BOOST_AMOUNTS             # Operator seed boosts (e.g., "250,250,250")
-BOOST_WINNERS             # Predictions: RED|BLUE|NONE (e.g., "RED,BLUE,RED")
-BOOST_METHODS             # Predictions: KNOCKOUT|SUBMISSION|DECISION|NO_CONTEST
-RESOLVE                   # true to submit results
-RESULT_WINNERS            # Actual winners (e.g., "RED,BLUE,RED")
-RESULT_METHODS            # Actual methods (e.g., "KNOCKOUT,DECISION,SUBMISSION")
-POINTS_WINNER             # Points for correct winner (e.g., "10,10,10")
-POINTS_WINNER_METHOD      # Points for winner+method (e.g., "25,25,25")
-TOTAL_WINNING_POINTS      # Offchain sum of winning points (e.g., "100,80,60")
-```
-
-**Run:**
-```bash
-forge script script/CreateEventAndSeed.s.sol --rpc-url $RPC_URL --broadcast --legacy -vvvv
-```
-
-**Notes:**
-- Script automatically allowlists operator and Booster in FP1155
-- Omit optional arrays to skip steps (e.g., leave `BONUS_AMOUNTS` empty to skip bonuses)
-- Resolution requires `RESOLVE=true` and `TOTAL_WINNING_POINTS` > 0 per fight
-- `TOTAL_WINNING_POINTS` must equal sum of all winning users' points offchain
-- Set `CLAIM_DEADLINE_OFFSET=0` for no deadline
+Typical sequence (manual or scripted):
+1. `createEvent(eventId, fightIds, seasonId)`
+2. (Optional) `setFightBoostCutoff(eventId, fightId, cutoff)` / `depositBonus(eventId, fightId, amount)`
+3. Users: `placeBoosts(eventId, BoostInput[])`
+4. Operator: `submitFightResult(eventId, fightId, winner, method, pointsWinner, pointsWinnerMethod, totalWinningPoints)`
+5. Users: `claimReward(eventId)` before deadline
+6. (Optional) Operator: `purgeEvent(eventId, recipient)` after deadline
 
 **Purge after deadline:**
 ```bash
@@ -562,6 +532,8 @@ cast send $BOOSTER_ADDRESS \
 - **Deadline enforcement**: Claims rejected after deadline
   - Set reasonable deadlines (e.g., 7-30 days)
   - Communicate clearly to users
+- **Boost cutoffs**: Respect `boostCutoff` per fight; no new boosts/additions after cutoff
+- **Minimum boost**: Enforce `minBoostAmount` to prevent dust spam
 - **Purge mechanism**: Operator can sweep unclaimed funds after deadline
   - Ensure deadline is well-communicated
   - Consider grace period before purge
