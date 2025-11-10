@@ -54,7 +54,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
 
     struct Event {
         uint256 seasonId;        // Which FP season this event uses
-        uint256[] fightIds;      // Fixed array of fight numbers
+        uint256 numFights;       // Number of fights in the event (fights are 1, 2, 3, ..., numFights)
         bool exists;
         uint256 claimDeadline;   // unix timestamp after which claims are rejected (0 = no limit)
     }
@@ -93,7 +93,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     mapping(string => mapping(uint256 => mapping(address => uint256[]))) private userBoostIndices;
 
     // ============ Events ============
-    event EventCreated(string indexed eventId, uint256[] fightIds, uint256 seasonId);
+    event EventCreated(string indexed eventId, uint256 numFights, uint256 seasonId);
     event EventClaimDeadlineUpdated(string indexed eventId, uint256 deadline);
     event FightStatusUpdated(string indexed eventId, uint256 indexed fightId, FightStatus status);
     event FightBoostCutoffUpdated(string indexed eventId, uint256 indexed fightId, uint256 cutoff);
@@ -162,16 +162,16 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     /**
      * @notice Create a new event with multiple fights
      * @param eventId Unique identifier for the event (e.g., "UFC_300")
-     * @param fightIds Array of fight numbers (immutable after creation)
+     * @param numFights Number of fights in the event (fights are 1, 2, 3, ..., numFights)
      * @param seasonId Which FP season this event uses
      */
     function createEvent(
         string calldata eventId,
-        uint256[] calldata fightIds,
+        uint256 numFights,
         uint256 seasonId
     ) external onlyRole(OPERATOR_ROLE) {
         require(!events[eventId].exists, "event exists");
-        require(fightIds.length > 0, "no fights");
+        require(numFights > 0, "no fights");
 
         // Verify season is valid and open
         require(FP.seasonStatus(seasonId) == FP1155.SeasonStatus.OPEN, "season not open");
@@ -179,17 +179,17 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         // Create event
         events[eventId] = Event({
             seasonId: seasonId,
-            fightIds: fightIds,
+            numFights: numFights,
             exists: true,
             claimDeadline: 0
         });
 
-        // Initialize all fights as OPEN
-        for (uint256 i = 0; i < fightIds.length; i++) {
-            fights[eventId][fightIds[i]].status = FightStatus.OPEN;
+        // Initialize all fights as OPEN (fightIds are 1, 2, 3, ..., numFights)
+        for (uint256 i = 1; i <= numFights; i++) {
+            fights[eventId][i].status = FightStatus.OPEN;
         }
 
-        emit EventCreated(eventId, fightIds, seasonId);
+        emit EventCreated(eventId, numFights, seasonId);
     }
 
     /**
@@ -355,13 +355,17 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         require(events[eventId].exists, "event not exists");
         require(inputs.length > 0, "no boosts");
 
-        uint256 seasonId = events[eventId].seasonId;
+        Event storage evt = events[eventId];
+        uint256 seasonId = evt.seasonId;
         uint256 totalAmount = 0;
 
         for (uint256 i = 0; i < inputs.length; i++) {
             BoostInput calldata input = inputs[i];
             require(input.amount > 0, "amount=0");
             require(input.amount >= minBoostAmount, "below min boost");
+
+            // Validate that fightId exists in the event (O(1) range check: fights are 1, 2, 3, ..., numFights)
+            require(input.fightId >= 1 && input.fightId <= evt.numFights, "fightId not in event");
 
             Fight storage fight = fights[eventId][input.fightId];
             require(fight.status == FightStatus.OPEN, "fight not open");
@@ -419,6 +423,9 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         require(events[eventId].exists, "event not exists");
         require(additionalAmount > 0, "amount=0");
         require(additionalAmount >= minBoostAmount, "below min boost");
+
+        Event storage evt = events[eventId];
+        require(fightId >= 1 && fightId <= evt.numFights, "fightId not in event");
 
         Fight storage fight = fights[eventId][fightId];
         require(fight.status == FightStatus.OPEN, "fight not open");
@@ -542,16 +549,16 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
      * @notice Get event details
      * @param eventId Event identifier
      * @return seasonId The FP season for this event
-     * @return fightIds Array of fight numbers
+     * @return numFights Number of fights in the event (fights are 1, 2, 3, ..., numFights)
      * @return exists Whether the event exists
      */
     function getEvent(string calldata eventId)
         external
         view
-        returns (uint256 seasonId, uint256[] memory fightIds, bool exists)
+        returns (uint256 seasonId, uint256 numFights, bool exists)
     {
         Event storage evt = events[eventId];
-        return (evt.seasonId, evt.fightIds, evt.exists);
+        return (evt.seasonId, evt.numFights, evt.exists);
     }
 
     /**
@@ -588,15 +595,14 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
 
         Event storage evt = events[eventId];
         uint256 totalSweep = 0;
-        uint256[] storage fightIds = evt.fightIds;
-        for (uint256 i = 0; i < fightIds.length; i++) {
-            uint256 fid = fightIds[i];
-            Fight storage fight = fights[eventId][fid];
+        // Iterate through all fights (fightIds are 1, 2, 3, ..., numFights)
+        for (uint256 i = 1; i <= evt.numFights; i++) {
+            Fight storage fight = fights[eventId][i];
             if (fight.status == FightStatus.RESOLVED) {
                 uint256 unclaimedOriginal = fight.originalPool - fight.claimedOriginal;
                 uint256 unclaimedBonus = fight.bonusPool - fight.claimedBonus;
                 if (unclaimedOriginal > 0 || unclaimedBonus > 0) {
-                    emit FightPurged(eventId, fid, unclaimedOriginal, unclaimedBonus);
+                    emit FightPurged(eventId, i, unclaimedOriginal, unclaimedBonus);
                     totalSweep += unclaimedOriginal + unclaimedBonus;
                     fight.claimedOriginal = fight.originalPool;
                     fight.claimedBonus = fight.bonusPool;

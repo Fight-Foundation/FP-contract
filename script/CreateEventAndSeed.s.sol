@@ -81,9 +81,10 @@ contract CreateEventAndSeed is Script {
         fp.setTransferAllowlist(operator, true);
         fp.setTransferAllowlist(address(booster), true);
 
-        // Create event
-        booster.createEvent(eventId, P.fights, seasonId);
-        console2.log("Created event with", P.fights.length, "fights");
+        // Create event (fights are sequential: 1, 2, 3, ..., numFights)
+        uint256 numFights = P.fights.length;
+        booster.createEvent(eventId, numFights, seasonId);
+        console2.log("Created event with", numFights, "fights");
 
         // Optional deadline
         if (deadlineOffset > 0) {

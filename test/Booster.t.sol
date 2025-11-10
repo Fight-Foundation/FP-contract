@@ -20,6 +20,7 @@ contract BoosterTest is Test {
     uint256 constant FIGHT_1 = 1;
     uint256 constant FIGHT_2 = 2;
     uint256 constant FIGHT_3 = 3;
+    uint256 constant INVALID_FIGHT_ID = 99; // Used for testing invalid fightId scenarios
 
     function setUp() public {
         vm.startPrank(admin);
@@ -54,22 +55,18 @@ contract BoosterTest is Test {
     // ============ Event Creation Tests ============
 
     function test_createEvent() public {
-        uint256[] memory fightIds = new uint256[](3);
-        fightIds[0] = FIGHT_1;
-        fightIds[1] = FIGHT_2;
-        fightIds[2] = FIGHT_3;
+        uint256 numFights = 3;
 
     vm.prank(operator);
         vm.expectEmit(true, false, false, true);
-        emit Booster.EventCreated(EVENT_1, fightIds, SEASON_1);
-        booster.createEvent(EVENT_1, fightIds, SEASON_1);
+        emit Booster.EventCreated(EVENT_1, numFights, SEASON_1);
+        booster.createEvent(EVENT_1, numFights, SEASON_1);
 
         // Verify event exists
-        (uint256 seasonId, uint256[] memory storedFights, bool exists) = booster.getEvent(EVENT_1);
+        (uint256 seasonId, uint256 storedNumFights, bool exists) = booster.getEvent(EVENT_1);
         assertTrue(exists);
         assertEq(seasonId, SEASON_1);
-        assertEq(storedFights.length, 3);
-        assertEq(storedFights[0], FIGHT_1);
+        assertEq(storedNumFights, 3);
 
         // Verify all fights initialized as OPEN
         (Booster.FightStatus status,,,,,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
@@ -83,32 +80,24 @@ contract BoosterTest is Test {
     }
 
     function testRevert_createEvent_notOperator() public {
-        uint256[] memory fightIds = new uint256[](1);
-        fightIds[0] = FIGHT_1;
-
     vm.prank(user1);
         vm.expectRevert();
-        booster.createEvent(EVENT_1, fightIds, SEASON_1);
+        booster.createEvent(EVENT_1, 1, SEASON_1);
     }
 
     function testRevert_createEvent_duplicate() public {
-        uint256[] memory fightIds = new uint256[](1);
-        fightIds[0] = FIGHT_1;
-
     vm.startPrank(operator);
-        booster.createEvent(EVENT_1, fightIds, SEASON_1);
+        booster.createEvent(EVENT_1, 1, SEASON_1);
         
         vm.expectRevert("event exists");
-        booster.createEvent(EVENT_1, fightIds, SEASON_1);
+        booster.createEvent(EVENT_1, 1, SEASON_1);
         vm.stopPrank();
     }
 
     function testRevert_createEvent_emptyFights() public {
-        uint256[] memory fightIds = new uint256[](0);
-
     vm.prank(operator);
         vm.expectRevert("no fights");
-        booster.createEvent(EVENT_1, fightIds, SEASON_1);
+        booster.createEvent(EVENT_1, 0, SEASON_1);
     }
 
     // ============ Boost Placement Tests ============
@@ -189,6 +178,54 @@ contract BoosterTest is Test {
         booster.placeBoosts(EVENT_1, boosts);
     }
 
+    function testRevert_placeBoosts_invalidFightId() public {
+        _createDefaultEvent();
+
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](1);
+        boosts[0] = Booster.BoostInput(INVALID_FIGHT_ID, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+
+        vm.prank(user1);
+        vm.expectRevert("fightId not in event");
+        booster.placeBoosts(EVENT_1, boosts);
+    }
+
+    function testRevert_placeBoosts_multipleInputsWithInvalidFightId() public {
+        _createDefaultEvent();
+
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](2);
+        boosts[0] = Booster.BoostInput(FIGHT_1, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        boosts[1] = Booster.BoostInput(INVALID_FIGHT_ID, 200 ether, Booster.Corner.BLUE, Booster.WinMethod.SUBMISSION); // Invalid fightId
+
+        vm.prank(user1);
+        vm.expectRevert("fightId not in event");
+        booster.placeBoosts(EVENT_1, boosts);
+    }
+
+    function test_placeBoosts_validFightIds() public {
+        _createDefaultEvent();
+
+        // Place boosts with all valid fightIds from the event
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](3);
+        boosts[0] = Booster.BoostInput(FIGHT_1, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        boosts[1] = Booster.BoostInput(FIGHT_2, 200 ether, Booster.Corner.BLUE, Booster.WinMethod.SUBMISSION);
+        boosts[2] = Booster.BoostInput(FIGHT_3, 300 ether, Booster.Corner.RED, Booster.WinMethod.DECISION);
+
+        vm.prank(user1);
+        booster.placeBoosts(EVENT_1, boosts);
+
+        // Verify all boosts were created
+        Booster.Boost[] memory userBoosts1 = booster.getUserBoosts(EVENT_1, FIGHT_1, user1);
+        Booster.Boost[] memory userBoosts2 = booster.getUserBoosts(EVENT_1, FIGHT_2, user1);
+        Booster.Boost[] memory userBoosts3 = booster.getUserBoosts(EVENT_1, FIGHT_3, user1);
+
+        assertEq(userBoosts1.length, 1);
+        assertEq(userBoosts2.length, 1);
+        assertEq(userBoosts3.length, 1);
+        assertEq(userBoosts1[0].amount, 100 ether);
+        assertEq(userBoosts2[0].amount, 200 ether);
+        assertEq(userBoosts3[0].amount, 300 ether);
+    }
+
     // ============ Add to Boost Tests ============
 
     function test_addToBoost() public {
@@ -257,6 +294,22 @@ contract BoosterTest is Test {
         vm.prank(user1);
         vm.expectRevert("invalid boost index");
         booster.addToBoost(EVENT_1, FIGHT_1, 0, 50 ether);
+    }
+
+    function testRevert_addToBoost_invalidFightId() public {
+        _createDefaultEvent();
+        
+        // Place initial boost on valid fight
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](1);
+        boosts[0] = Booster.BoostInput(FIGHT_1, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        
+        vm.prank(user1);
+        booster.placeBoosts(EVENT_1, boosts);
+
+        // Try to add to boost with invalid fightId (not in event)
+        vm.prank(user1);
+        vm.expectRevert("fightId not in event");
+        booster.addToBoost(EVENT_1, INVALID_FIGHT_ID, 0, 50 ether);
     }
 
     // ============ Bonus Deposit Tests ============
@@ -806,13 +859,8 @@ contract BoosterTest is Test {
     // ============ Helper Functions ============
 
     function _createDefaultEvent() internal {
-        uint256[] memory fightIds = new uint256[](3);
-        fightIds[0] = FIGHT_1;
-        fightIds[1] = FIGHT_2;
-        fightIds[2] = FIGHT_3;
-
     vm.prank(operator);
-        booster.createEvent(EVENT_1, fightIds, SEASON_1);
+        booster.createEvent(EVENT_1, 3, SEASON_1);
     }
 
     function _placeMultipleBoosts() internal {
