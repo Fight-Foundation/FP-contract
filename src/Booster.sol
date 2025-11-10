@@ -466,13 +466,17 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         uint256[] calldata boostIndices
     ) external nonReentrant {
         require(events[eventId].exists, "event not exists");
-        uint256 deadline = events[eventId].claimDeadline;
+        
+        Event storage evt = events[eventId];
+        require(fightId >= 1 && fightId <= evt.numFights, "fightId not in event");
+        
+        uint256 deadline = evt.claimDeadline;
         require(deadline == 0 || block.timestamp <= deadline, "claim deadline passed");
 
         Fight storage fight = fights[eventId][fightId];
         require(fight.status == FightStatus.RESOLVED, "not resolved");
 
-        uint256 seasonId = events[eventId].seasonId;
+        uint256 seasonId = evt.seasonId;
         Boost[] storage fightBoosts = boosts[eventId][fightId];
 
         // Handle cancelled fight (full refund of principal)
