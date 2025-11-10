@@ -258,6 +258,54 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         emit FightCancelled(eventId, fightId);
     }
 
+    /**
+     * @notice Set or update the claim deadline for an event (0 disables deadline)
+     * @dev Non-decreasing: if already set, new value must be >= current
+     */
+    function setEventClaimDeadline(string calldata eventId, uint256 deadline) external onlyRole(OPERATOR_ROLE) {
+        require(events[eventId].exists, "event not exists");
+        uint256 current = events[eventId].claimDeadline;
+        if (current != 0) {
+            require(deadline == 0 || deadline >= current, "deadline decrease");
+        }
+        events[eventId].claimDeadline = deadline;
+        emit EventClaimDeadlineUpdated(eventId, deadline);
+    }
+
+    /**
+     * @notice Purge unclaimed funds for all resolved fights in an event after deadline
+     * @param eventId Event identifier
+     * @param recipient Address to receive swept unclaimed FP
+     */
+    function purgeEvent(string calldata eventId, address recipient) external onlyRole(OPERATOR_ROLE) nonReentrant {
+        require(events[eventId].exists, "event not exists");
+        require(recipient != address(0), "recipient=0");
+        uint256 deadline = events[eventId].claimDeadline;
+        require(deadline != 0 && block.timestamp > deadline, "deadline not passed");
+
+        Event storage evt = events[eventId];
+        uint256 totalSweep = 0;
+        // Iterate through all fights (fightIds are 1, 2, 3, ..., numFights)
+        for (uint256 i = 1; i <= evt.numFights; i++) {
+            Fight storage fight = fights[eventId][i];
+            if (fight.status == FightStatus.RESOLVED) {
+                uint256 unclaimedOriginal = fight.originalPool - fight.claimedOriginal;
+                uint256 unclaimedBonus = fight.bonusPool - fight.claimedBonus;
+                if (unclaimedOriginal > 0 || unclaimedBonus > 0) {
+                    emit FightPurged(eventId, i, unclaimedOriginal, unclaimedBonus);
+                    totalSweep += unclaimedOriginal + unclaimedBonus;
+                    fight.claimedOriginal = fight.originalPool;
+                    fight.claimedBonus = fight.bonusPool;
+                }
+            }
+        }
+
+        if (totalSweep > 0) {
+            FP.safeTransferFrom(address(this), recipient, evt.seasonId, totalSweep, "");
+        }
+        emit EventPurged(eventId, recipient, totalSweep);
+    }
+
     // ============ Manager Functions ============
 
     /**
@@ -571,54 +619,6 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
      */
     function getEventClaimDeadline(string calldata eventId) external view returns (uint256) {
         return events[eventId].claimDeadline;
-    }
-
-    /**
-     * @notice Set or update the claim deadline for an event (0 disables deadline)
-     * @dev Non-decreasing: if already set, new value must be >= current
-     */
-    function setEventClaimDeadline(string calldata eventId, uint256 deadline) external onlyRole(OPERATOR_ROLE) {
-        require(events[eventId].exists, "event not exists");
-        uint256 current = events[eventId].claimDeadline;
-        if (current != 0) {
-            require(deadline == 0 || deadline >= current, "deadline decrease");
-        }
-        events[eventId].claimDeadline = deadline;
-        emit EventClaimDeadlineUpdated(eventId, deadline);
-    }
-
-    /**
-     * @notice Purge unclaimed funds for all resolved fights in an event after deadline
-     * @param eventId Event identifier
-     * @param recipient Address to receive swept unclaimed FP
-     */
-    function purgeEvent(string calldata eventId, address recipient) external onlyRole(OPERATOR_ROLE) nonReentrant {
-        require(events[eventId].exists, "event not exists");
-        require(recipient != address(0), "recipient=0");
-        uint256 deadline = events[eventId].claimDeadline;
-        require(deadline != 0 && block.timestamp > deadline, "deadline not passed");
-
-        Event storage evt = events[eventId];
-        uint256 totalSweep = 0;
-        // Iterate through all fights (fightIds are 1, 2, 3, ..., numFights)
-        for (uint256 i = 1; i <= evt.numFights; i++) {
-            Fight storage fight = fights[eventId][i];
-            if (fight.status == FightStatus.RESOLVED) {
-                uint256 unclaimedOriginal = fight.originalPool - fight.claimedOriginal;
-                uint256 unclaimedBonus = fight.bonusPool - fight.claimedBonus;
-                if (unclaimedOriginal > 0 || unclaimedBonus > 0) {
-                    emit FightPurged(eventId, i, unclaimedOriginal, unclaimedBonus);
-                    totalSweep += unclaimedOriginal + unclaimedBonus;
-                    fight.claimedOriginal = fight.originalPool;
-                    fight.claimedBonus = fight.bonusPool;
-                }
-            }
-        }
-
-        if (totalSweep > 0) {
-            FP.safeTransferFrom(address(this), recipient, evt.seasonId, totalSweep, "");
-        }
-        emit EventPurged(eventId, recipient, totalSweep);
     }
 
     /**
