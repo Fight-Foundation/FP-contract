@@ -15,7 +15,8 @@ contract DepositTest is Test {
 
     function setUp() public {
         // Deploy FP1155 with this test as admin
-        fp = new FP1155("ipfs://base/{id}.json", admin);
+        fp = new FP1155();
+        fp.initialize("ipfs://base/{id}.json", admin);
 
         // Deploy Deposit and grant it TRANSFER_AGENT_ROLE
         deposit = new Deposit(fp);

@@ -271,9 +271,13 @@ forge fmt
 
 ## Deploy
 
+**Important: FP1155 is now upgradeable using UUPS proxy pattern.**
+
+### Upgradeable Deployment (Recommended for Production)
+
 Testnet (BSC testnet):
 ```bash
-forge script script/Deploy.s.sol:Deploy \
+forge script script/DeployUpgradeable.s.sol:DeployUpgradeable \
 	--rpc-url "$BSC_TESTNET_RPC_URL" \
 	--broadcast --verify \
 	-vvvv
@@ -281,8 +285,42 @@ forge script script/Deploy.s.sol:Deploy \
 
 Mainnet (BSC):
 ```bash
-forge script script/Deploy.s.sol:Deploy \
+forge script script/DeployUpgradeable.s.sol:DeployUpgradeable \
 	--rpc-url "$BSC_RPC_URL" \
+	--broadcast --verify \
+	-vvvv
+```
+
+This will deploy:
+1. The implementation contract (FP1155 logic)
+2. The ERC1967 proxy contract (stores state, delegates to implementation)
+
+**Always interact with the proxy address**, not the implementation.
+
+### Upgrading to a New Implementation
+
+After the initial deployment, you can upgrade the logic:
+
+```bash
+export PROXY_ADDRESS=0x...  # Your deployed proxy address
+forge script script/UpgradeFP1155.s.sol:UpgradeFP1155 \
+	--rpc-url "$BSC_RPC_URL" \
+	--broadcast --verify \
+	-vvvv
+```
+
+The upgrade script will:
+1. Deploy a new implementation contract
+2. Call `upgradeToAndCall()` on the proxy (requires DEFAULT_ADMIN_ROLE)
+3. The proxy now uses the new logic, keeping all existing state
+
+### Legacy Deployment (Non-Upgradeable)
+
+For testing or non-production use, you can deploy without a proxy:
+
+```bash
+forge script script/Deploy.s.sol:Deploy \
+	--rpc-url "$BSC_TESTNET_RPC_URL" \
 	--broadcast --verify \
 	-vvvv
 ```
@@ -290,13 +328,30 @@ forge script script/Deploy.s.sol:Deploy \
 Note:
 - `ADMIN` env var overrides the admin address; otherwise the deployer becomes admin.
 - Verification requires `BSCSCAN_API_KEY`.
- - foundry.toml already reads `BSCSCAN_API_KEY` under `[etherscan]`, so `--verify` works out of the box.
+- foundry.toml already reads `BSCSCAN_API_KEY` under `[etherscan]`, so `--verify` works out of the box.
+
+## Upgradeability
+
+FP1155 uses the **UUPS (Universal Upgradeable Proxy Standard)** pattern:
+- All state is stored in the proxy contract
+- Logic is in the implementation contract
+- Upgrades are performed by calling `upgradeToAndCall()` on the proxy
+- Only addresses with `DEFAULT_ADMIN_ROLE` can authorize upgrades
+- Storage layout must remain compatible across upgrades (no reordering/removing variables)
+
+**Upgrade Safety:**
+- Always test upgrades on testnet first
+- Use OpenZeppelin's storage layout validator
+- Consider using a multisig for the admin role in production
+- Add new state variables only at the end of the storage section
 
 ## Security considerations
+- **Upgradeability**: Only DEFAULT_ADMIN_ROLE can upgrade the contract. Use a multisig for production.
+- **Upgrade safety**: Always test upgrades on testnet; storage layout must remain compatible.
 - Do not share the CLAIM_SIGNER private key; rotate on suspicion.
 - Keep seasons LOCKED once the season ends; the lock is irreversible by design.
 - Consider granting roles via multisig and using timelocks for sensitive ops.
-- The claim flow mints to `msg.sender`; don’t try to proxy claims to third parties unless you fully understand the implications.
+- The claim flow mints to `msg.sender`; don't try to proxy claims to third parties unless you fully understand the implications.
 
 ## Spec enforcement
 Enforced in `_update` hook (OZ v5.1):

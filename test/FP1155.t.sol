@@ -22,7 +22,8 @@ contract FP1155Test is Test {
     uint256 constant S1 = 2501; // Season 25.01
 
     function setUp() public {
-        fp = new FP1155("ipfs://base/{id}.json", admin);
+        fp = new FP1155();
+        fp.initialize("ipfs://base/{id}.json", admin);
         // grant roles
         vm.prank(admin);
         fp.grantRole(fp.MINTER_ROLE(), minter);

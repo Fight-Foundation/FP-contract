@@ -1,8 +1,20 @@
 # FP1155 Deployment Summary
 
-## Contract Deployments
+## ⚠️ Important: Upgradeable Contract
 
-Both mainnet and testnet deployments are **verified** and live at the same deterministic address.
+**FP1155 is now upgradeable using the UUPS (Universal Upgradeable Proxy Standard) pattern.**
+
+When deploying or interacting with FP1155:
+- Deploy via `DeployUpgradeable.s.sol` script (creates proxy + implementation)
+- Always use the **proxy address** for interactions
+- Only DEFAULT_ADMIN_ROLE can authorize upgrades
+- Storage layout must remain compatible across upgrades
+
+## Latest Deployments
+
+### Previous Non-Upgradeable Deployments (Legacy)
+
+Both mainnet and testnet had non-upgradeable deployments:
 
 ### BSC Mainnet (Chain 56)
 - **Contract Address:** `0x5Fa58c84606Eba7000eCaF24C918086B094Db39a`
@@ -52,6 +64,96 @@ Active testnet at `0xD0B5…6306`:
 
 Pending:
 - `CLAIM_SIGNER_ROLE` assignment
+
+## New Upgradeable Deployment Guide
+
+### Deploy FP1155 with UUPS Proxy
+
+**Step 1: Prepare Environment**
+```bash
+export PRIVATE_KEY=0x...
+export ADMIN=0x...  # Optional, defaults to deployer
+export BASE_URI="ipfs://base/{id}.json"  # Optional
+export BSC_RPC_URL="https://bsc-dataseed.binance.org"
+export BSCSCAN_API_KEY=...
+```
+
+**Step 2: Deploy to Testnet (BSC Testnet)**
+```bash
+forge script script/DeployUpgradeable.s.sol:DeployUpgradeable \
+  --rpc-url "$BSC_TESTNET_RPC_URL" \
+  --broadcast \
+  --verify \
+  -vvvv
+```
+
+**Step 3: Deploy to Mainnet (BSC)**
+```bash
+forge script script/DeployUpgradeable.s.sol:DeployUpgradeable \
+  --rpc-url "$BSC_RPC_URL" \
+  --broadcast \
+  --verify \
+  -vvvv
+```
+
+**Output:**
+```
+Deploying FP1155 (UUPS Upgradeable) with:
+  deployer: 0x...
+  admin: 0x...
+  baseURI: ipfs://base/{id}.json
+Implementation deployed at: 0x... (logic contract)
+Proxy deployed at: 0x... (use this address!)
+
+Use proxy address for interactions: 0x...
+```
+
+**Important:** Always use the **proxy address** for all interactions, not the implementation address.
+
+### Upgrade to New Implementation
+
+After initial deployment, you can upgrade the contract logic:
+
+**Step 1: Set Proxy Address**
+```bash
+export PROXY_ADDRESS=0x...  # Your deployed proxy address
+export PRIVATE_KEY=0x...    # Admin key (must have DEFAULT_ADMIN_ROLE)
+```
+
+**Step 2: Run Upgrade Script**
+```bash
+forge script script/UpgradeFP1155.s.sol:UpgradeFP1155 \
+  --rpc-url "$BSC_RPC_URL" \
+  --broadcast \
+  --verify \
+  -vvvv
+```
+
+**Output:**
+```
+Upgrading FP1155 proxy:
+  proxy: 0x...
+  admin: 0x...
+New implementation deployed at: 0x...
+Proxy upgraded successfully
+```
+
+**What happens during upgrade:**
+- A new implementation contract is deployed
+- The proxy's implementation pointer is updated
+- All state remains in the proxy (no data migration needed)
+- Users continue using the same proxy address
+
+### Upgrade Safety Checklist
+
+Before upgrading in production:
+- [ ] Test the upgrade on testnet first
+- [ ] Verify storage layout compatibility (no reordering/removing variables)
+- [ ] Run full test suite with new implementation
+- [ ] Use a multisig for admin role in production
+- [ ] Have a rollback plan (keep previous implementation address)
+- [ ] Consider adding a timelock before upgrades
+- [ ] Document all changes in the upgrade
 
 ## Post-Deployment Setup
 

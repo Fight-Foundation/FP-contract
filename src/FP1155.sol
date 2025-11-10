@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
-import {ERC1155Pausable} from "openzeppelin-contracts/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
-import {ERC1155Burnable} from "openzeppelin-contracts/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
-import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import {EIP712} from "openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
-import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import {ERC1155PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155PausableUpgradeable.sol";
+import {ERC1155BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title FP (Fighting Points) ERC-1155 on BSC
  * @notice Seasonal, non-tradable reputation asset. Transfers are restricted to an allowlist.
  *         Each season is a tokenId. Seasons can be LOCKED at end, prohibiting new mint/transfer but allowing burns.
  */
-contract FP1155 is ERC1155, ERC1155Pausable, ERC1155Burnable, AccessControl, EIP712 {
+contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155PausableUpgradeable, ERC1155BurnableUpgradeable, AccessControlUpgradeable, EIP712Upgradeable {
     // ============ Roles ============
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant TRANSFER_AGENT_ROLE = keccak256("TRANSFER_AGENT_ROLE");
@@ -43,14 +45,26 @@ contract FP1155 is ERC1155, ERC1155Pausable, ERC1155Burnable, AccessControl, EIP
     event AllowlistUpdated(address indexed account, bool allowed);
     event ClaimProcessed(address indexed account, uint256 indexed seasonId, uint256 amount, uint256 nonce);
 
-    // ============ Constructor ============
-    constructor(string memory baseURI, address admin) ERC1155(baseURI) EIP712("FP1155", "1") {
+    // ============ Initializer ============
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {}
+
+    function initialize(string memory baseURI, address admin) public initializer {
         require(admin != address(0), "admin=0");
+        __ERC1155_init(baseURI);
+        __EIP712_init("FP1155", "1");
+        __ERC1155Pausable_init();
+        __ERC1155Burnable_init();
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _grantRole(SEASON_ADMIN_ROLE, admin);
         // Admin can manage claim signers via role admin
     }
+
+    /// @dev UUPS upgrade authorization: only DEFAULT_ADMIN_ROLE can upgrade
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     // ============ Admin Ops ============
     function setURI(string memory newBaseURI) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -187,7 +201,7 @@ contract FP1155 is ERC1155, ERC1155Pausable, ERC1155Burnable, AccessControl, EIP
         address to,
         uint256[] memory ids,
         uint256[] memory values
-    ) internal override(ERC1155, ERC1155Pausable) {
+    ) internal override(ERC1155Upgradeable, ERC1155PausableUpgradeable) {
         // Enforce season + allowlist rules per token id
         uint256 len = ids.length;
         for (uint256 i = 0; i < len; i++) {
@@ -210,7 +224,7 @@ contract FP1155 is ERC1155, ERC1155Pausable, ERC1155Burnable, AccessControl, EIP
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC1155, AccessControl)
+    override(ERC1155Upgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

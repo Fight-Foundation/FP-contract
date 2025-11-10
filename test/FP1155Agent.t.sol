@@ -21,7 +21,8 @@ contract FP1155AgentTest is Test {
     uint256 constant SEASON = 0;
 
     function setUp() public {
-        fp = new FP1155("ipfs://base/{id}.json", admin);
+        fp = new FP1155();
+        fp.initialize("ipfs://base/{id}.json", admin);
         agent = new DummyAgent(fp);
         fp.grantRole(fp.MINTER_ROLE(), admin);
         // allowlist endpoints that will be used
