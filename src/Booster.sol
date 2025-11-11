@@ -98,7 +98,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     mapping(string => mapping(uint256 => mapping(address => uint256[]))) private userBoostIndices;
 
     // ============ Events ============
-    event EventCreated(string indexed eventId, uint256 numFights, uint256 seasonId);
+    event EventCreated(string indexed eventId, uint256 numFights, uint256 indexed seasonId);
     event EventClaimDeadlineUpdated(string indexed eventId, uint256 deadline);
     event FightStatusUpdated(string indexed eventId, uint256 indexed fightId, FightStatus status);
     event FightBoostCutoffUpdated(string indexed eventId, uint256 indexed fightId, uint256 cutoff);
@@ -125,7 +125,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     event FightResultSubmitted(
         string indexed eventId,
         uint256 indexed fightId,
-        Corner winner,
+        Corner indexed winner,
         WinMethod method,
         uint256 pointsForWinner,
         uint256 pointsForWinnerMethod,
