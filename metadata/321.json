@@ -1,0 +1,11 @@
+{
+  "name": "Fighting Points: UFC 321",
+  "description": "Official Fighting Points for UFC 321. Earned by participating in the event.",
+  "image": "https://assets.fight.foundation/fp/images/321.png",
+  "external_url": "https://fight.foundation/events/321",
+  "attributes": [
+    { "trait_type": "Event", "value": "UFC 321" },
+    { "trait_type": "Season", "value": 321 },
+    { "trait_type": "Type", "value": "Reputation" }
+  ]
+}

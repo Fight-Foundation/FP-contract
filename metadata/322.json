@@ -1,0 +1,11 @@
+{
+  "name": "Fighting Points: UFC 322",
+  "description": "Official Fighting Points for UFC 322. Earned by participating in the event.",
+  "image": "https://assets.fight.foundation/fp/images/322.png",
+  "external_url": "https://fight.foundation/events/322",
+  "attributes": [
+    { "trait_type": "Event", "value": "UFC 322" },
+    { "trait_type": "Season", "value": 322 },
+    { "trait_type": "Type", "value": "Reputation" }
+  ]
+}

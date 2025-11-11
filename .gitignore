@@ -1,3 +1,5 @@
+# Ignore Foundry broadcast artifacts
+broadcast/
 #############################
 # Build artifacts (Foundry/HH)
 #############################
