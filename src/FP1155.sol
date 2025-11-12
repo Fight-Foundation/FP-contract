@@ -47,7 +47,9 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
 
     // ============ Initializer ============
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {}
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(string memory baseURI, address admin) public initializer {
         require(admin != address(0), "admin=0");
@@ -235,4 +237,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
     {
         return super.supportsInterface(interfaceId);
     }
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 }
