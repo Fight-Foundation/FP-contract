@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {FP1155} from "../src/FP1155.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Deposit} from "../src/Deposit.sol";
 
 contract DepositTest is Test {
@@ -14,9 +15,15 @@ contract DepositTest is Test {
     uint256 constant SEASON = 0;
 
     function setUp() public {
-        // Deploy FP1155 with this test as admin
-        fp = new FP1155();
-        fp.initialize("ipfs://base/{id}.json", admin);
+        // Deploy FP1155 with this test as admin via proxy
+        FP1155 implementation = new FP1155();
+        bytes memory initData = abi.encodeWithSelector(
+            FP1155.initialize.selector,
+            "ipfs://base/{id}.json",
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        fp = FP1155(address(proxy));
 
         // Deploy Deposit and grant it TRANSFER_AGENT_ROLE
         deposit = new Deposit(fp);

@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {FP1155} from "../src/FP1155.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DummyAgent {
     FP1155 public immutable fp;
@@ -21,8 +22,15 @@ contract FP1155AgentTest is Test {
     uint256 constant SEASON = 0;
 
     function setUp() public {
-        fp = new FP1155();
-        fp.initialize("ipfs://base/{id}.json", admin);
+        // Deploy implementation and proxy-initialize
+        FP1155 implementation = new FP1155();
+        bytes memory initData = abi.encodeWithSelector(
+            FP1155.initialize.selector,
+            "ipfs://base/{id}.json",
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        fp = FP1155(address(proxy));
         agent = new DummyAgent(fp);
         fp.grantRole(fp.MINTER_ROLE(), admin);
         // allowlist endpoints that will be used

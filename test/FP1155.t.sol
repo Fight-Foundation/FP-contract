@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {FP1155} from "src/FP1155.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {MessageHashUtils} from "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -22,8 +23,16 @@ contract FP1155Test is Test {
     uint256 constant S1 = 2501; // Season 25.01
 
     function setUp() public {
-        fp = new FP1155();
-        fp.initialize("ipfs://base/{id}.json", admin);
+        // Deploy implementation
+        FP1155 implementation = new FP1155();
+        // Initialize via proxy
+        bytes memory initData = abi.encodeWithSelector(
+            FP1155.initialize.selector,
+            "ipfs://base/{id}.json",
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        fp = FP1155(address(proxy));
         // grant roles
         vm.prank(admin);
         fp.grantRole(fp.MINTER_ROLE(), minter);
@@ -271,7 +280,7 @@ contract FP1155Test is Test {
         uint256 nonce = fp.nonces(alice);
         bytes memory sig = _signClaim(alice, S1, 2, nonce, deadline);
         vm.prank(alice);
-        vm.expectRevert(bytes("mint: season locked"));
+        vm.expectRevert(bytes("claim: season locked"));
         fp.claim(S1, 2, deadline, sig);
     }
 

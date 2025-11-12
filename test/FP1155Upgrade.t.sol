@@ -223,11 +223,9 @@ contract FP1155UpgradeTest is Test, IERC1155Receiver {
 
     function test_CannotInitializeImplementationDirectly() public {
         // Implementation should not be initializable after deployment
-        // (Note: Our current implementation allows this for testing, 
-        // but in production with _disableInitializers() this would fail)
         FP1155 standalone = new FP1155();
+        vm.expectRevert();
         standalone.initialize("ipfs://test/", admin);
-        // This works in our test setup, but would be blocked with _disableInitializers()
     }
 
     // ============ Edge Cases ============
