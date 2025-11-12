@@ -8,6 +8,7 @@ import {ERC1155PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/to
 import {ERC1155BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
@@ -15,7 +16,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @notice Seasonal, non-tradable reputation asset. Transfers are restricted to an allowlist.
  *         Each season is a tokenId. Seasons can be LOCKED at end, prohibiting new mint/transfer but allowing burns.
  */
-contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155PausableUpgradeable, ERC1155BurnableUpgradeable, AccessControlUpgradeable, EIP712Upgradeable {
+contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155PausableUpgradeable, ERC1155BurnableUpgradeable, AccessControlUpgradeable, EIP712Upgradeable, ReentrancyGuardUpgradeable {
     // ============ Roles ============
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant TRANSFER_AGENT_ROLE = keccak256("TRANSFER_AGENT_ROLE");
@@ -59,6 +60,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
         __ERC1155Burnable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _grantRole(SEASON_ADMIN_ROLE, admin);
@@ -126,6 +128,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
     function mint(address to, uint256 seasonId, uint256 amount, bytes memory data)
         external
         onlyRole(MINTER_ROLE)
+        nonReentrant
     {
         require(to != address(0), "mint: to=0");
         require(amount > 0, "amount=0");
@@ -135,6 +138,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
     function mintBatch(address to, uint256[] memory seasonIds, uint256[] memory amounts, bytes memory data)
         external
         onlyRole(MINTER_ROLE)
+        nonReentrant
     {
         require(seasonIds.length > 0, "mintBatch: empty arrays");
         require(seasonIds.length == amounts.length, "mintBatch: length mismatch");
@@ -158,7 +162,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
         uint256 amount,
         uint256 deadline,
         bytes calldata signature
-    ) external whenNotPaused {
+    ) external whenNotPaused nonReentrant {
         require(block.timestamp <= deadline, "claim: expired");
         require(amount > 0, "amount=0");
         require(_seasonStatus[seasonId] == SeasonStatus.OPEN, "claim: season locked");
@@ -189,7 +193,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
         uint256 seasonId,
         uint256 amount,
         bytes calldata data
-    ) external whenNotPaused onlyRole(TRANSFER_AGENT_ROLE) {
+    ) external whenNotPaused onlyRole(TRANSFER_AGENT_ROLE) nonReentrant {
         require(from != address(0), "agentTransferFrom: from=0");
         require(to != address(0), "agentTransferFrom: to=0");
         require(amount > 0, "amount=0");
