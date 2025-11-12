@@ -7,18 +7,11 @@
  * - Current timestamp in terminal (Mac/Linux): date +%s
  * - Specific date in terminal (Mac): date -j -f "%Y-%m-%d %H:%M:%S" "2024-01-01 00:00:00" +%s
  * - Specific date in terminal (Linux): date -d "2024-01-01 00:00:00" +%s
- * - Using Node.js (current time): node -e "console.log(Math.floor(Date.now() / 1000))"
- * - Using Node.js (specific date): node -e "console.log(Math.floor(new Date('2024-01-01T00:00:00Z').getTime() / 1000))"
- * - Online converter: https://www.epochconverter.com/
- * 
- * @example Set cutoff to a specific unix timestamp for all fights in event
- * ts-node tools/booster/set-event-boost-cutoff.ts --eventId UFC_300 --cutoff 1704067200
- * 
- * @example Calculate timestamp for 1 hour from now (using Node.js)
- * node -e "console.log(Math.floor(Date.now() / 1000) + 3600)"
- * 
- * @example Calculate timestamp for a specific date (e.g., Jan 1, 2024 00:00:00 UTC)
- * node -e "console.log(Math.floor(new Date('2024-01-01T00:00:00Z').getTime() / 1000))"
+
+ * @example Calculate timestamp for Nov 15, 2025 4:00 PM UTC-7 (using Node.js - recommended)
+ * node -e "console.log(Math.floor(new Date('2025-11-15T16:00:00-07:00').getTime() / 1000))"
+ * Note: This correctly converts 4:00 PM UTC-7 to 11:00 PM UTC (23:00:00 UTC)
+
  * 
  * @example Disable cutoff (set to 0, relies on status only)
  * ts-node tools/booster/set-event-boost-cutoff.ts --eventId UFC_300 --cutoff 0
