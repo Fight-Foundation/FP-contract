@@ -133,6 +133,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
         external
         onlyRole(MINTER_ROLE)
     {
+        require(seasonIds.length == amounts.length, "mintBatch: length mismatch");
         // Disallow zero amounts to avoid no-op writes
         for (uint256 i = 0; i < amounts.length; i++) {
             require(amounts[i] > 0, "amount=0");
