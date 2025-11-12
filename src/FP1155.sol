@@ -125,6 +125,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
         external
         onlyRole(MINTER_ROLE)
     {
+        require(to != address(0), "mint: to=0");
         require(amount > 0, "amount=0");
         _mint(to, seasonId, amount, data);
     }
@@ -185,6 +186,8 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
         uint256 amount,
         bytes calldata data
     ) external whenNotPaused onlyRole(TRANSFER_AGENT_ROLE) {
+        require(from != address(0), "agentTransferFrom: from=0");
+        require(to != address(0), "agentTransferFrom: to=0");
         require(amount > 0, "amount=0");
         // Bypass external approval requirement by calling internal transfer
         _safeTransferFrom(from, to, seasonId, amount, data);
