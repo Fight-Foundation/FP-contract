@@ -17,11 +17,7 @@ contract DepositTest is Test {
     function setUp() public {
         // Deploy FP1155 with this test as admin via proxy
         FP1155 implementation = new FP1155();
-        bytes memory initData = abi.encodeWithSelector(
-            FP1155.initialize.selector,
-            "ipfs://base/{id}.json",
-            admin
-        );
+        bytes memory initData = abi.encodeWithSelector(FP1155.initialize.selector, "ipfs://base/{id}.json", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         fp = FP1155(address(proxy));
 
@@ -117,24 +113,28 @@ contract DepositTest is Test {
         deposit.withdraw(season2, 3);
     }
 
-    function test_NotAllowlistedUser_RevertsOnDepositAndWithdraw() public {
+    function test_NotAllowlistedUser_CanDepositButNotWithdraw() public {
         // Remove user from allowlist
         fp.setTransferAllowlist(user, false);
 
-        // Deposit should revert (endpoints not allowed)
-        vm.prank(user);
-        vm.expectRevert(bytes("transfer: endpoints not allowed"));
-        deposit.deposit(SEASON, 5);
-
-        // Re-allowlist and deposit
-        fp.setTransferAllowlist(user, true);
+        // Deposit should succeed because destination (Deposit contract) has TRANSFER_AGENT_ROLE
+        // New behavior: when destination is an agent, sender doesn't need to be allowlisted
         vm.prank(user);
         deposit.deposit(SEASON, 5);
+        assertEq(deposit.deposited(user, SEASON), 5);
+        assertEq(fp.balanceOf(user, SEASON), 95);
 
-        // Remove allowlist again and attempt withdraw -> revert
-        fp.setTransferAllowlist(user, false);
+        // Withdraw should revert because destination (user) doesn't have TRANSFER_AGENT_ROLE
+        // and user is not allowlisted, so endpoint check fails
         vm.prank(user);
         vm.expectRevert(bytes("transfer: endpoints not allowed"));
         deposit.withdraw(SEASON, 2);
+
+        // Re-allowlist user and withdraw should succeed
+        fp.setTransferAllowlist(user, true);
+        vm.prank(user);
+        deposit.withdraw(SEASON, 2);
+        assertEq(deposit.deposited(user, SEASON), 3);
+        assertEq(fp.balanceOf(user, SEASON), 97);
     }
 }
