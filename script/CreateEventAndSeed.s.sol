@@ -184,26 +184,36 @@ contract CreateEventAndSeed is Script {
     function _parseCornerArray(string memory csv) internal pure returns (Booster.Corner[] memory out) {
         string[] memory parts = _split(csv);
         out = new Booster.Corner[](parts.length);
-        for (uint256 i = 0; i < parts.length; i++) out[i] = _toCorner(parts[i]);
+        for (uint256 i = 0; i < parts.length; i++) {
+            out[i] = _toCorner(parts[i]);
+        }
     }
 
     function _parseMethodArray(string memory csv) internal pure returns (Booster.WinMethod[] memory out) {
         string[] memory parts = _split(csv);
         out = new Booster.WinMethod[](parts.length);
-        for (uint256 i = 0; i < parts.length; i++) out[i] = _toMethod(parts[i]);
+        for (uint256 i = 0; i < parts.length; i++) {
+            out[i] = _toMethod(parts[i]);
+        }
     }
 
     function _split(string memory csv) internal pure returns (string[] memory parts) {
         bytes memory b = bytes(csv);
         if (b.length == 0) return new string[](0);
-        uint256 count = 1; for (uint256 i = 0; i < b.length; i++) if (b[i] == ",") count++;
+        uint256 count = 1;
+        for (uint256 i = 0; i < b.length; i++) {
+            if (b[i] == ",") count++;
+        }
         parts = new string[](count);
-        uint256 idx = 0; uint256 start = 0;
+        uint256 idx = 0;
+        uint256 start = 0;
         for (uint256 i = 0; i <= b.length; i++) {
             if (i == b.length || b[i] == ",") {
                 uint256 len = i - start;
                 bytes memory slice = new bytes(len);
-                for (uint256 j = start; j < i; j++) slice[j - start] = b[j];
+                for (uint256 j = start; j < i; j++) {
+                    slice[j - start] = b[j];
+                }
                 parts[idx++] = string(slice);
                 start = i + 1;
             }
@@ -246,7 +256,8 @@ contract CreateEventAndSeed is Script {
         bytes memory b = bytes(s);
         for (uint256 i = 0; i < b.length; i++) {
             uint8 c = uint8(b[i]);
-            if (c >= 65 && c <= 90) { // A-Z
+            if (c >= 65 && c <= 90) {
+                // A-Z
                 b[i] = bytes1(c + 32);
             }
         }
