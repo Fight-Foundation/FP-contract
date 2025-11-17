@@ -4,8 +4,12 @@ pragma solidity ^0.8.20;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-import {ERC1155PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155PausableUpgradeable.sol";
-import {ERC1155BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
+import {
+    ERC1155PausableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155PausableUpgradeable.sol";
+import {
+    ERC1155BurnableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -16,7 +20,16 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @notice Seasonal, non-tradable reputation asset. Transfers are restricted to an allowlist.
  *         Each season is a tokenId. Seasons can be LOCKED at end, prohibiting new mint/transfer but allowing burns.
  */
-contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155PausableUpgradeable, ERC1155BurnableUpgradeable, AccessControlUpgradeable, EIP712Upgradeable, ReentrancyGuardUpgradeable {
+contract FP1155 is
+    Initializable,
+    UUPSUpgradeable,
+    ERC1155Upgradeable,
+    ERC1155PausableUpgradeable,
+    ERC1155BurnableUpgradeable,
+    AccessControlUpgradeable,
+    EIP712Upgradeable,
+    ReentrancyGuardUpgradeable
+{
     // ============ Roles ============
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant TRANSFER_AGENT_ROLE = keccak256("TRANSFER_AGENT_ROLE");
@@ -163,13 +176,12 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
      * @param amount amount to mint
      * @param deadline unix timestamp after which claim is invalid
      * @param signature EIP-712 signature from an address with CLAIM_SIGNER_ROLE over Claim struct
-    */
-    function claim(
-        uint256 seasonId,
-        uint256 amount,
-        uint256 deadline,
-        bytes calldata signature
-    ) external whenNotPaused nonReentrant {
+     */
+    function claim(uint256 seasonId, uint256 amount, uint256 deadline, bytes calldata signature)
+        external
+        whenNotPaused
+        nonReentrant
+    {
         require(block.timestamp <= deadline, "claim: expired");
         require(amount > 0, "amount=0");
         require(_seasonStatus[seasonId] == SeasonStatus.OPEN, "claim: season locked");
@@ -194,13 +206,12 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
      *      - Both endpoints must be allowed via allowlist or TRANSFER_AGENT_ROLE
      *      Reverts with the same errors as a normal transfer if conditions fail.
      */
-    function agentTransferFrom(
-        address from,
-        address to,
-        uint256 seasonId,
-        uint256 amount,
-        bytes calldata data
-    ) external whenNotPaused onlyRole(TRANSFER_AGENT_ROLE) nonReentrant {
+    function agentTransferFrom(address from, address to, uint256 seasonId, uint256 amount, bytes calldata data)
+        external
+        whenNotPaused
+        onlyRole(TRANSFER_AGENT_ROLE)
+        nonReentrant
+    {
         require(from != address(0), "agentTransferFrom: from=0");
         require(to != address(0), "agentTransferFrom: to=0");
         require(amount > 0, "amount=0");
@@ -215,12 +226,10 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
 
     // ============ Transfer Guard ============
     // OZ v5.1 uses _update as the transfer/mint/burn hook.
-    function _update(
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory values
-    ) internal override(ERC1155Upgradeable, ERC1155PausableUpgradeable) {
+    function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
+        internal
+        override(ERC1155Upgradeable, ERC1155PausableUpgradeable)
+    {
         // Enforce season + allowlist rules per token id
         uint256 len = ids.length;
         for (uint256 i = 0; i < len; i++) {
@@ -247,7 +256,7 @@ contract FP1155 is Initializable, UUPSUpgradeable, ERC1155Upgradeable, ERC1155Pa
     function supportsInterface(bytes4 interfaceId)
         public
         view
-    override(ERC1155Upgradeable, AccessControlUpgradeable)
+        override(ERC1155Upgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

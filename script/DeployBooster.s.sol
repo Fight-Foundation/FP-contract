@@ -22,17 +22,20 @@ contract DeployBooster is Script {
         uint256 deadlineOffset = vm.envOr("BASE_DEADLINE_OFFSET", uint256(0));
 
         uint256 pk = vm.envUint("PRIVATE_KEY");
+        // The account derived from PRIVATE_KEY; use this explicitly for admin
+        address admin = vm.addr(pk);
         vm.startBroadcast(pk);
 
-        address deployer = msg.sender;
-        address operator = operatorEnv == address(0) ? deployer : operatorEnv;
+        // Operator falls back to admin if not provided
+        address operator = operatorEnv == address(0) ? admin : operatorEnv;
 
         FP1155 fp = FP1155(fpAddr);
         console2.log("Using FP1155:", fpAddr);
-        console2.log("Deployer:", deployer);
+    console2.log("Admin:", admin);
         console2.log("Operator:", operator);
 
-        booster = new Booster(fpAddr, deployer); // deployer gets DEFAULT_ADMIN_ROLE
+    // Deploy booster with admin as DEFAULT_ADMIN_ROLE holder
+    booster = new Booster(fpAddr, admin);
         console2.log("Booster deployed at:", address(booster));
 
         // Grant Booster TRANSFER_AGENT_ROLE on FP1155 so it can move FP.
@@ -46,7 +49,7 @@ contract DeployBooster is Script {
         fp.setTransferAllowlist(address(booster), true); // Not strictly required but harmless.
         fp.setTransferAllowlist(operator, true);
 
-        // Grant OPERATOR_ROLE on Booster
+        // Grant OPERATOR_ROLE on Booster to operator
         bytes32 opRole = booster.OPERATOR_ROLE();
         if (!booster.hasRole(opRole, operator)) {
             booster.grantRole(opRole, operator);

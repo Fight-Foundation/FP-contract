@@ -26,11 +26,7 @@ contract FP1155Test is Test {
         // Deploy implementation
         FP1155 implementation = new FP1155();
         // Initialize via proxy
-        bytes memory initData = abi.encodeWithSelector(
-            FP1155.initialize.selector,
-            "ipfs://base/{id}.json",
-            admin
-        );
+        bytes memory initData = abi.encodeWithSelector(FP1155.initialize.selector, "ipfs://base/{id}.json", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         fp = FP1155(address(proxy));
         // grant roles

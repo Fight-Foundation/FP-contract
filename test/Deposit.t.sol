@@ -17,11 +17,7 @@ contract DepositTest is Test {
     function setUp() public {
         // Deploy FP1155 with this test as admin via proxy
         FP1155 implementation = new FP1155();
-        bytes memory initData = abi.encodeWithSelector(
-            FP1155.initialize.selector,
-            "ipfs://base/{id}.json",
-            admin
-        );
+        bytes memory initData = abi.encodeWithSelector(FP1155.initialize.selector, "ipfs://base/{id}.json", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         fp = FP1155(address(proxy));
 
