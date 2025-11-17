@@ -113,7 +113,7 @@ contract DepositTest is Test {
         deposit.withdraw(season2, 3);
     }
 
-    function test_NotAllowlistedUser_CanDepositButNotWithdraw() public {
+    function test_NotAllowlistedUser_CanDepositAndWithdraw() public {
         // Remove user from allowlist
         fp.setTransferAllowlist(user, false);
 
@@ -124,17 +124,32 @@ contract DepositTest is Test {
         assertEq(deposit.deposited(user, SEASON), 5);
         assertEq(fp.balanceOf(user, SEASON), 95);
 
-        // Withdraw should revert because destination (user) doesn't have TRANSFER_AGENT_ROLE
-        // and user is not allowlisted, so endpoint check fails
-        vm.prank(user);
-        vm.expectRevert(bytes("transfer: endpoints not allowed"));
-        deposit.withdraw(SEASON, 2);
-
-        // Re-allowlist user and withdraw should succeed
-        fp.setTransferAllowlist(user, true);
+        // Withdraw should succeed because source (Deposit contract) has TRANSFER_AGENT_ROLE
+        // If either endpoint has TRANSFER_AGENT_ROLE, transfer is allowed
         vm.prank(user);
         deposit.withdraw(SEASON, 2);
         assertEq(deposit.deposited(user, SEASON), 3);
         assertEq(fp.balanceOf(user, SEASON), 97);
+    }
+
+    function test_NotAllowlistedUser_WithdrawFailsWithoutTransferRole() public {
+        // Remove user from allowlist
+        fp.setTransferAllowlist(user, false);
+
+        // Deposit should succeed because destination (Deposit contract) has TRANSFER_AGENT_ROLE
+        vm.prank(user);
+        deposit.deposit(SEASON, 5);
+        assertEq(deposit.deposited(user, SEASON), 5);
+
+        // Revoke TRANSFER_AGENT_ROLE from Deposit contract
+        fp.revokeRole(fp.TRANSFER_AGENT_ROLE(), address(deposit));
+
+        // Withdraw should fail because:
+        // - Deposit contract no longer has TRANSFER_AGENT_ROLE
+        // - User is not allowlisted
+        // - Neither endpoint has TRANSFER_AGENT_ROLE nor is allowlisted
+        vm.prank(user);
+        vm.expectRevert(bytes("transfer: endpoints not allowed"));
+        deposit.withdraw(SEASON, 2);
     }
 }

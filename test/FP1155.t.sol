@@ -372,14 +372,13 @@ contract FP1155Test is Test {
         assertEq(fp.balanceOf(agent, ids[1]), 3);
     }
 
-    function testTransferFromAgentToNonAllowlistedFails() public {
-        // Mint to agent
-        vm.prank(minter);
-        fp.mint(agent, S1, 5, "");
-        // bob is NOT allowlisted
-        vm.startPrank(agent);
+    function testTransferFromNonAgentToNonAllowlistedFails() public {
+        // Mint to alice (who doesn't have TRANSFER_AGENT_ROLE)
+        _mintToAlice(S1, 5);
+        // bob is NOT allowlisted, and alice doesn't have TRANSFER_AGENT_ROLE, so transfer should fail
+        vm.startPrank(alice);
         vm.expectRevert(bytes("transfer: endpoints not allowed"));
-        fp.safeTransferFrom(agent, bob, S1, 2, "");
+        fp.safeTransferFrom(alice, bob, S1, 2, "");
         vm.stopPrank();
     }
 
@@ -439,8 +438,9 @@ contract FP1155Test is Test {
         // Remove bob from allowlist to test non-allowlisted destination
         vm.prank(admin);
         fp.setTransferAllowlist(bob, false);
-        // transfer from agent to non-allowlisted bob should fail
-        assertFalse(fp.isTransfersAllowed(agent, bob, S2));
+        // transfer from agent to non-allowlisted bob should succeed because agent has TRANSFER_AGENT_ROLE
+        // If either endpoint has TRANSFER_AGENT_ROLE, transfer is allowed
+        assertTrue(fp.isTransfersAllowed(agent, bob, S2));
         // Add bob back to allowlist
         vm.prank(admin);
         fp.setTransferAllowlist(bob, true);
