@@ -42,8 +42,8 @@ Notes:
 #### Allowlist updates (Mainnet FP1155 proxy)
 - Removed from transfer allowlist → `0xf362fe668d93c43be16716a73702333795fbcea6`
   - Tx: `0x5b6cc71d7f2a62c141f48b0d11c5f850fb146eded1a06ebefaf06daaf653e372`
-- Added to transfer allowlist → `0x91341dbc9f531fedcf790b7cae85f997a8e1e9d4`
-  - Tx: `0x672b0c3cf302f65df6f395a143f5cf157b989817dc4ab4603ce36f3fb25707af`
+- Removed from transfer allowlist → `0x91341dbc9f531fedcf790b7cae85f997a8e1e9d4`
+  - Tx: `0xf5a82ff82d8863e5d322920bd289d270dd2564350980e164cddb44861ec07eff`
 - Added to transfer allowlist → `0xD0B591751E6aa314192810471461bDE963796306` (FP1155 itself)
   - Tx: `0x38a7a486250673cc374191e4e4cdcc96a63277f4d20089ae5a8e64e391718de5`
 - Added to transfer allowlist → `0x5E845Db62fDF02451cfC98be1e9927eB48a42fce` (Booster)
