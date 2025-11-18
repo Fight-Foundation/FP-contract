@@ -4,7 +4,7 @@ Use these addresses in apps and scripts. Always interact with the FP1155 proxy (
 
 ## Production (BSC Mainnet – chainId 56)
 - FP1155 (UUPS proxy): `0xD0B591751E6aa314192810471461bDE963796306`
-- FP1155 implementation (current, for verification only): `0xFC2a83E854C1D975284e4A13c0837A1b26e09221`
+- FP1155 implementation (current, for verification only): `0x8A17E1D1835472CE9325EC2F8F37C34451Ab0BA6`
 - Booster: `0x5E845Db62fDF02451cfC98be1e9927eB48a42fce`
 - Base metadata URI: `https://assets.fight.foundation/fp/{id}.json`
 
@@ -30,15 +30,28 @@ Notes:
 **Base URI Update (Mainnet):** set via `setURI("https://assets.fight.foundation/fp/{id}.json")`
   - Tx: `0x2639b6a9789819550e6f242dce30f45dd476508049ee71e3651a3fb8e220cfa1`
 **Upgrade (Mainnet):** UUPS upgrade executed, proxy unchanged
-  - Previous implementation: `0xD9fda390Fa212324F26276F14D6954076948C8d1`
-  - New implementation: `0xFC2a83E854C1D975284e4A13c0837A1b26e09221`
-  - Deploy impl tx: `0xf8de839546191818e91f37b9f760f5139434c0863d600b3dd4ca60a836cf461c`
-  - Upgrade tx: `0x3f25bd8973f6c5adc8ec338f4f8a6eece6018de88414cdecc22911292613a8ac`
-  - Verified: https://bscscan.com/address/0xFC2a83E854C1D975284e4A13c0837A1b26e09221#code
+  - Implementation history:
+    - v1: `0xD9fda390Fa212324F26276F14D6954076948C8d1`
+    - v2: `0xFC2a83E854C1D975284e4A13c0837A1b26e09221`
+    - v3 (current): `0x8A17E1D1835472CE9325EC2F8F37C34451Ab0BA6` ⭐
+  - v3 Deploy tx: `0x6d6d24cc19d967ff63b3864efa0ba572f84c10bf403c440a11fc2f9492905ee9`
+  - v3 Upgrade tx: `0x2cf591112925f2d0ceb5c642092b1923776df3239db2f6230147a126752290fa`
+  - v3 Verified: https://bscscan.com/address/0x8A17E1D1835472CE9325EC2F8F37C34451Ab0BA6#code
+  - v3 Changes: Fix transfer logic to allow agents to transfer to any address (enables Booster payouts)
   - Note: State is preserved across upgrades (storage remains in proxy)
 #### Allowlist updates (Mainnet FP1155 proxy)
 - Removed from transfer allowlist → `0xf362fe668d93c43be16716a73702333795fbcea6`
   - Tx: `0x5b6cc71d7f2a62c141f48b0d11c5f850fb146eded1a06ebefaf06daaf653e372`
+- Removed from transfer allowlist → `0x91341dbc9f531fedcf790b7cae85f997a8e1e9d4`
+  - Tx: `0xf5a82ff82d8863e5d322920bd289d270dd2564350980e164cddb44861ec07eff`
+- Added to transfer allowlist → `0xD0B591751E6aa314192810471461bDE963796306` (FP1155 itself)
+  - Tx: `0x38a7a486250673cc374191e4e4cdcc96a63277f4d20089ae5a8e64e391718de5`
+- Added to transfer allowlist → `0x5E845Db62fDF02451cfC98be1e9927eB48a42fce` (Booster)
+  - Tx: `0xb3411e2827eeec2c1c314f4d3c78f2e3a04307153ae1e4edfe2bc0bb37c2e042`
+
+#### Role grants (Mainnet FP1155 proxy)
+- Granted TRANSFER_AGENT_ROLE → `0x5E845Db62fDF02451cfC98be1e9927eB48a42fce` (Booster)
+  - Tx: `0x56a40364be074dba220a225dff80a311fcaa992d5bd341ef76ecfed4f013d0f1`
 ## ⚠️ Important: Upgradeable Contract
 
 **FP1155 is now upgradeable using the UUPS (Universal Upgradeable Proxy Standard) pattern.**
