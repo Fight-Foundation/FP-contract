@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import {ERC1155Holder} from "openzeppelin-contracts/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {FP1155} from "./FP1155.sol";
 
 /**
@@ -12,7 +15,13 @@ import {FP1155} from "./FP1155.sol";
  * @dev Users boost their fight predictions with FP tokens. Winners split the prize pool proportionally.
  *      Requires TRANSFER_AGENT_ROLE on the FP1155 contract.
  */
-contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
+contract Booster is
+    Initializable,
+    UUPSUpgradeable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable,
+    IERC1155Receiver
+{
     // ============ Roles ============
     // Single privileged role controlling all admin, management and result operations
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
@@ -80,7 +89,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     }
 
     // ============ Storage ============
-    FP1155 public immutable FP;
+    FP1155 public FP;
 
     // Minimum boost amount per boost (can be 0 to disable)
     uint256 public minBoostAmount;
@@ -146,17 +155,30 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     );
     event EventPurged(string indexed eventId, address indexed recipient, uint256 amount);
     event FightPurged(string indexed eventId, uint256 indexed fightId, uint256 unclaimedPool);
+    event FPUpdated(address indexed oldFP, address indexed newFP);
 
-    // ============ Constructor ============
-    constructor(address _fp, address admin) {
+    // ============ Initializer ============
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _fp, address admin) public initializer {
         require(_fp != address(0), "fp=0");
         require(admin != address(0), "admin=0");
+
+        __AccessControl_init();
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
 
         FP = FP1155(_fp);
         minBoostAmount = 0; // Default: no minimum
         maxBoostAmount = 0; // Default: no maximum
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
+
+    /// @dev UUPS upgrade authorization: only DEFAULT_ADMIN_ROLE can upgrade
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     // ============ Admin Functions ============
 
@@ -181,18 +203,29 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     }
 
     /**
+     * @notice Update the FP1155 contract address
+     * @param newFP New FP1155 contract address
+     * @dev Only DEFAULT_ADMIN_ROLE can update the FP contract.
+     *      After updating, ensure the new FP contract grants TRANSFER_AGENT_ROLE to this Booster.
+     */
+    function setFP(address newFP) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newFP != address(0), "fp=0");
+        address oldFP = address(FP);
+        FP = FP1155(newFP);
+        emit FPUpdated(oldFP, newFP);
+    }
+
+    /**
      * @notice Create a new event with multiple fights
      * @param eventId Unique identifier for the event (e.g., "UFC_300")
      * @param numFights Number of fights in the event (fights are 1, 2, 3, ..., numFights)
      * @param seasonId Which FP season this event uses
      * @param defaultBoostCutoff Default boost cutoff timestamp for all fights (0 = no cutoff)
      */
-    function createEvent(
-        string calldata eventId,
-        uint256 numFights,
-        uint256 seasonId,
-        uint256 defaultBoostCutoff
-    ) external onlyRole(OPERATOR_ROLE) {
+    function createEvent(string calldata eventId, uint256 numFights, uint256 seasonId, uint256 defaultBoostCutoff)
+        external
+        onlyRole(OPERATOR_ROLE)
+    {
         require(!events[eventId].exists, "event exists");
         require(numFights > 0, "no fights");
 
@@ -948,8 +981,30 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         emit RewardClaimed(eventId, fightId, user, boostIndex, payout, points);
     }
 
-    // ============ Interface Support ============
-    function supportsInterface(bytes4 interfaceId) public view override(AccessControl, ERC1155Holder) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    // ============ ERC1155 Receiver Implementation ============
+    function onERC1155Received(address, address, uint256, uint256, bytes memory) public pure override returns (bytes4) {
+        return IERC1155Receiver.onERC1155Received.selector;
     }
+
+    function onERC1155BatchReceived(address, address, uint256[] memory, uint256[] memory, bytes memory)
+        public
+        pure
+        override
+        returns (bytes4)
+    {
+        return IERC1155Receiver.onERC1155BatchReceived.selector;
+    }
+
+    // ============ Interface Support ============
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(AccessControlUpgradeable, IERC165)
+        returns (bool)
+    {
+        return interfaceId == type(IERC1155Receiver).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 }

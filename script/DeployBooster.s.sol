@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Script, console2} from "forge-std/Script.sol";
 import {FP1155} from "src/FP1155.sol";
 import {Booster} from "src/Booster.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @title DeployBooster
@@ -31,12 +32,16 @@ contract DeployBooster is Script {
 
         FP1155 fp = FP1155(fpAddr);
         console2.log("Using FP1155:", fpAddr);
-    console2.log("Admin:", admin);
+        console2.log("Admin:", admin);
         console2.log("Operator:", operator);
 
-    // Deploy booster with admin as DEFAULT_ADMIN_ROLE holder
-    booster = new Booster(fpAddr, admin);
-        console2.log("Booster deployed at:", address(booster));
+        // Deploy Booster via ERC1967Proxy and initialize
+        Booster implementation = new Booster();
+        bytes memory initData = abi.encodeWithSelector(Booster.initialize.selector, fpAddr, admin);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        booster = Booster(address(proxy));
+        console2.log("Booster implementation deployed at:", address(implementation));
+        console2.log("Booster proxy deployed at:", address(booster));
 
         // Grant Booster TRANSFER_AGENT_ROLE on FP1155 so it can move FP.
         bytes32 transferAgentRole = fp.TRANSFER_AGENT_ROLE();

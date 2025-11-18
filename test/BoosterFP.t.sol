@@ -41,16 +41,16 @@ contract BoosterFPTest is Test {
 
         // Deploy FP1155 via ERC1967Proxy and initialize
         FP1155 implementation = new FP1155();
-        bytes memory initData = abi.encodeWithSelector(
-            FP1155.initialize.selector,
-            "https://api.fightfoundation.io/fp/",
-            admin
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(FP1155.initialize.selector, "https://api.fightfoundation.io/fp/", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         fp = FP1155(address(proxy));
 
-        // Deploy Booster
-        booster = new Booster(address(fp), admin);
+        // Deploy Booster via ERC1967Proxy and initialize
+        Booster boosterImplementation = new Booster();
+        bytes memory boosterInitData = abi.encodeWithSelector(Booster.initialize.selector, address(fp), admin);
+        ERC1967Proxy boosterProxy = new ERC1967Proxy(address(boosterImplementation), boosterInitData);
+        booster = Booster(address(boosterProxy));
 
         // Grant roles
         fp.grantRole(fp.TRANSFER_AGENT_ROLE(), address(booster));
