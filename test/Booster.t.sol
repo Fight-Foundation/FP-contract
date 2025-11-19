@@ -1821,4 +1821,125 @@ contract BoosterTest is Test {
         // Total pool was 1500 ether, all should be distributed (allow 1 wei rounding error)
         assertApproxEqAbs(totalPaidOut, 1500 ether, 1);
     }
+
+    /**
+     * @notice Test verifying the fix for cancelled fight refund accounting bug
+     * @dev This test verifies that cancelled fight refunds are correctly reflected in fight.claimedAmount,
+     *      allowing purgeEvent to correctly calculate unclaimed funds and transfer the remaining balance
+     */
+    function test_cancelledFightRefundAccountingBug() public {
+        // Setup: Create event and place bets
+        _createDefaultEvent();
+
+        uint256 user1Stake = 100 ether;
+        uint256 user2Stake = 200 ether;
+        uint256 bonusAmount = 300 ether;
+
+        // Users place boosts
+        Booster.BoostInput[] memory boosts1 = new Booster.BoostInput[](1);
+        boosts1[0] = Booster.BoostInput(FIGHT_1, user1Stake, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+
+        Booster.BoostInput[] memory boosts2 = new Booster.BoostInput[](1);
+        boosts2[0] = Booster.BoostInput(FIGHT_1, user2Stake, Booster.Corner.BLUE, Booster.WinMethod.SUBMISSION);
+
+        vm.prank(user1);
+        booster.placeBoosts(EVENT_1, boosts1);
+
+        vm.prank(user2);
+        booster.placeBoosts(EVENT_1, boosts2);
+
+        // Operator deposits bonus
+        vm.prank(operator);
+        booster.depositBonus(EVENT_1, FIGHT_1, bonusAmount);
+
+        // Verify initial state
+        (,,,uint256 bonusPool, uint256 originalPool,uint256 _sumWinnersStakes,uint256 _winningPoolTotalShares,uint256 _pointsForWinner,uint256 _pointsForWinnerMethod,uint256 claimedAmount,uint256 _boostCutoff,bool _cancelled) = booster.getFight(EVENT_1, FIGHT_1);
+        uint256 totalPool = originalPool + bonusPool;
+
+        console2.log("Initial state:");
+        console2.log("  Original pool: %d", originalPool);
+        console2.log("  Bonus pool: %d", bonusPool);
+        console2.log("  Total pool: %d", totalPool);
+        console2.log("  Claimed amount: %d", claimedAmount);
+        console2.log("  Contract balance: %d", fp.balanceOf(address(booster), SEASON_1));
+
+        assertEq(originalPool, user1Stake + user2Stake, "Original pool should equal total stakes");
+        assertEq(bonusPool, bonusAmount, "Bonus pool should equal deposited amount");
+        assertEq(claimedAmount, 0, "Initially no claims");
+        assertEq(totalPool, 600 ether, "Total pool should be 600 ether");
+
+        // STEP 1: Cancel the fight
+        vm.prank(operator);
+        booster.cancelFight(EVENT_1, FIGHT_1);
+
+        // STEP 2: Users claim refunds
+        uint256[] memory user1Indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
+        uint256[] memory user2Indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user2);
+
+        uint256 contractBalanceBefore = fp.balanceOf(address(booster), SEASON_1);
+        uint256 user1BalanceBefore = fp.balanceOf(user1, SEASON_1);
+        uint256 user2BalanceBefore = fp.balanceOf(user2, SEASON_1);
+
+        console2.log("\nBefore refunds:");
+        console2.log("  Contract balance: %d", contractBalanceBefore);
+        console2.log("  User1 balance: %d", user1BalanceBefore);
+        console2.log("  User2 balance: %d", user2BalanceBefore);
+
+        // User1 claims refund
+        vm.prank(user1);
+        booster.claimReward(EVENT_1, FIGHT_1, user1Indices);
+
+        // User2 claims refund
+        vm.prank(user2);
+        booster.claimReward(EVENT_1, FIGHT_1, user2Indices);
+
+        uint256 contractBalanceAfterRefunds = fp.balanceOf(address(booster), SEASON_1);
+        uint256 user1BalanceAfter = fp.balanceOf(user1, SEASON_1);
+        uint256 user2BalanceAfter = fp.balanceOf(user2, SEASON_1);
+
+        console2.log("\nAfter refunds:");
+        console2.log("  Contract balance: %d", contractBalanceAfterRefunds);
+        console2.log("  User1 balance: %d", user1BalanceAfter);
+        console2.log("  User2 balance: %d", user2BalanceAfter);
+
+        // Verify refunds were paid correctly
+        assertEq(user1BalanceAfter, user1BalanceBefore + user1Stake, "User1 should receive refund");
+        assertEq(user2BalanceAfter, user2BalanceBefore + user2Stake, "User2 should receive refund");
+        assertEq(contractBalanceAfterRefunds, contractBalanceBefore - user1Stake - user2Stake, "Contract should pay out stakes");
+
+        // STEP 3: Check fight.claimedAmount - BUG FIXED: should be updated now
+        (,,,uint256 _bonusPool2,uint256 _originalPool2,uint256 _sumWinnersStakes2,uint256 _winningPoolTotalShares2,uint256 _pointsForWinner2,uint256 _pointsForWinnerMethod2,uint256 claimedAmountAfterRefunds,uint256 _boostCutoff2,bool _cancelled2) = booster.getFight(EVENT_1, FIGHT_1);
+
+        console2.log("\nBug Fix Verification:");
+        console2.log("  fight.claimedAmount after refunds: %d", claimedAmountAfterRefunds);
+        console2.log("  Expected (bug fixed): %d", user1Stake + user2Stake);
+        console2.log("  Actual refunds paid: %d", user1Stake + user2Stake);
+
+        // BUG FIXED: claimedAmount should now be updated correctly
+        assertEq(claimedAmountAfterRefunds, user1Stake + user2Stake, "claimedAmount should be updated for cancelled fight refunds");
+
+        // STEP 4: Set claim deadline to enable purging
+        vm.prank(operator);
+        booster.setEventClaimDeadline(EVENT_1, block.timestamp + 1);
+
+        // Advance time past deadline
+        vm.warp(block.timestamp + 2);
+
+        // STEP 5: Attempt to purge - should succeed now that accounting is correct
+        console2.log("\nAttempting purgeEvent (should succeed):");
+        console2.log("  Remaining contract balance: %d", contractBalanceAfterRefunds);
+        console2.log("  purgeEvent will try to sweep: %d", totalPool - claimedAmountAfterRefunds);
+        console2.log("  Expected unclaimed: %d (bonus pool)", bonusAmount);
+
+        uint256 operatorBalanceBefore = fp.balanceOf(operator, SEASON_1);
+
+        // This should NOT revert because accounting is now correct
+        vm.prank(operator);
+        booster.purgeEvent(EVENT_1, operator);
+
+        uint256 operatorBalanceAfter = fp.balanceOf(operator, SEASON_1);
+
+        // Verify operator received the remaining bonus pool
+        assertEq(operatorBalanceAfter - operatorBalanceBefore, bonusAmount, "Operator should receive remaining bonus pool");
+    }
 }

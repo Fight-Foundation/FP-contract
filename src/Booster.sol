@@ -547,6 +547,10 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
             uint256 refund = _processCancelledBoostRefund(fightBoosts, boostIndices, msg.sender);
 
             require(refund > 0, "nothing to refund");
+            
+            // Update claimed amount to reflect refunds paid
+            fight.claimedAmount += refund;
+            
             FP.safeTransferFrom(address(this), msg.sender, seasonId, refund, "");
             return;
         }
@@ -601,6 +605,8 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
                 uint256 refund = _processCancelledBoostRefund(fightBoosts, input.boostIndices, msg.sender);
 
                 if (refund > 0) {
+                    // Update claimed amount to reflect refunds paid
+                    fight.claimedAmount += refund;
                     totalPayout += refund;
                 }
                 continue;
