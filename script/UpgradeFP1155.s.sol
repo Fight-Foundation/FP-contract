@@ -14,7 +14,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  *     --broadcast \
  *     --verify \
  *     -vvvv
- *
+ * 
  * Required env vars:
  *   PRIVATE_KEY - Admin private key (must have DEFAULT_ADMIN_ROLE)
  *   PROXY_ADDRESS - Address of the existing proxy to upgrade

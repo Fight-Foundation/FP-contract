@@ -26,7 +26,11 @@ contract DeployUpgradeable is Script {
         console2.log("Implementation deployed at:", implementation);
 
         // Encode initializer call
-        bytes memory initData = abi.encodeWithSelector(FP1155.initialize.selector, baseURI, admin);
+        bytes memory initData = abi.encodeWithSelector(
+            FP1155.initialize.selector,
+            baseURI,
+            admin
+        );
 
         // Deploy proxy
         proxy = address(new ERC1967Proxy(implementation, initData));

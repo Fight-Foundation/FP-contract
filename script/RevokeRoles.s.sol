@@ -20,8 +20,8 @@ contract RevokeRoles is Script {
         FP1155 token = FP1155(tokenAddr);
         bytes32 role = keccak256(bytes(roleName));
 
-        console2.log("Using token:", tokenAddr);
-        console2.log("Role keccak:");
+    console2.log("Using token:", tokenAddr);
+    console2.log("Role keccak:");
         console2.logBytes32(role);
 
         // Revoke

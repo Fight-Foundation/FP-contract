@@ -21,12 +21,12 @@ contract Deploy is Script {
         console2.log("  deployer:", msg.sender);
         console2.log("  admin:", admin);
         console2.log("  baseURI:", baseURI);
-
+        
         // NOTE: This deploys directly, not through a proxy
         // For upgradeable deployment, use DeployUpgradeable.s.sol
         token = new FP1155();
         token.initialize(baseURI, admin);
-
+        
         console2.log("FP1155 deployed at:", address(token));
         vm.stopBroadcast();
     }
