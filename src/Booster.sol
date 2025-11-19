@@ -233,7 +233,12 @@ contract Booster is
         events[eventId] =
             Event({seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0, claimReady: false});
 
-        // Initialize all fights as OPEN (fightIds are 1, 2, 3, ..., numFights)
+        // Validate defaultBoostCutoff if provided
+        if (defaultBoostCutoff > 0) {
+            require(block.timestamp < defaultBoostCutoff, "boost cutoff must be in the future");
+        }
+
+        // Initialize all fights as OPEN (fightIds are 1, 2, 3, ..., numFights) and set boost cutoff if provided
         for (uint256 i = 1; i <= numFights; i++) {
             fights[eventId][i].status = FightStatus.OPEN;
             if (defaultBoostCutoff > 0) {
