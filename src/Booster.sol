@@ -66,7 +66,7 @@ contract Booster is
         uint256 numFights; // Number of fights in the event (fights are 1, 2, 3, ..., numFights)
         bool exists;
         uint256 claimDeadline; // unix timestamp after which claims are rejected (0 = no limit)
-        bool claimReady; // Final approval state - once true, results cannot be updated and claims are enabled
+        bool claimReady; // Final approval state - when true, results cannot be updated and claims are enabled
     }
 
     struct Boost {
