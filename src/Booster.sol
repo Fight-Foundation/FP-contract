@@ -482,7 +482,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
 
             // Check boost cutoff if set
             if (fight.boostCutoff > 0) {
-                require(block.timestamp < fight.boostCutoff, "boost cutoff passed");
+                require(block.timestamp <= fight.boostCutoff, "boost cutoff passed");
             }
 
             // Create boost
@@ -540,7 +540,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
 
         // Check boost cutoff if set
         if (fight.boostCutoff > 0) {
-            require(block.timestamp < fight.boostCutoff, "boost cutoff passed");
+            require(block.timestamp <= fight.boostCutoff, "boost cutoff passed");
         }
 
         Boost[] storage fightBoosts = boosts[eventId][fightId];

@@ -701,6 +701,25 @@ contract BoosterTest is Test {
         booster.purgeEvent(EVENT_1, operator);
     }
 
+    function test_placeBoost_atBoostCutoff() public {
+        _createDefaultEvent();
+        uint256 cutoff = block.timestamp + 10;
+        vm.prank(operator);
+        booster.setFightBoostCutoff(EVENT_1, FIGHT_1, cutoff);
+        
+        // Warp to exact cutoff time (inclusive behavior)
+        vm.warp(cutoff);
+        
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](1);
+        boosts[0] = Booster.BoostInput(FIGHT_1, 50 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        vm.prank(user1);
+        booster.placeBoosts(EVENT_1, boosts);
+        
+        // Verify boost was placed
+        Booster.Boost[] memory userBoosts = booster.getUserBoosts(EVENT_1, FIGHT_1, user1);
+        assertEq(userBoosts.length, 1);
+    }
+
     function testRevert_placeBoost_afterBoostCutoff() public {
         _createDefaultEvent();
         vm.prank(operator);
@@ -711,6 +730,28 @@ contract BoosterTest is Test {
         vm.prank(user1);
         vm.expectRevert("boost cutoff passed");
         booster.placeBoosts(EVENT_1, boosts);
+    }
+
+    function test_addToBoost_atBoostCutoff() public {
+        _createDefaultEvent();
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](1);
+        boosts[0] = Booster.BoostInput(FIGHT_1, 50 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        vm.prank(user1);
+        booster.placeBoosts(EVENT_1, boosts);
+        
+        uint256 cutoff = block.timestamp + 10;
+        vm.prank(operator);
+        booster.setFightBoostCutoff(EVENT_1, FIGHT_1, cutoff);
+        
+        // Warp to exact cutoff time (inclusive behavior)
+        vm.warp(cutoff);
+        
+        vm.prank(user1);
+        booster.addToBoost(EVENT_1, FIGHT_1, 0, 10 ether);
+        
+        // Verify boost was increased
+        Booster.Boost[] memory userBoosts = booster.getUserBoosts(EVENT_1, FIGHT_1, user1);
+        assertEq(userBoosts[0].amount, 60 ether);
     }
 
     function testRevert_addToBoost_afterBoostCutoff() public {
