@@ -192,7 +192,7 @@ contract BoosterFPTest is Test {
 
         // Mark event as claim ready
         vm.prank(operator);
-        booster.setEventClaimReady(EVENT_1);
+        booster.setEventClaimReady(EVENT_1, true);
 
         // Get total winnings pool (prize pool)
         // prizePool = originalPool - sumWinnersStakes + bonusPool
@@ -587,7 +587,7 @@ contract BoosterFPTest is Test {
 
         // Mark event as claim ready
         vm.prank(operator);
-        booster.setEventClaimReady(EVENT_1);
+        booster.setEventClaimReady(EVENT_1, true);
 
         console2.log("\n=== ALL FIGHTS RESOLVED ===");
 
@@ -1080,7 +1080,7 @@ contract BoosterFPTest is Test {
 
         // Mark event as claim ready
         vm.prank(operator);
-        booster.setEventClaimReady(EVENT_1);
+        booster.setEventClaimReady(EVENT_1, true);
 
         console2.log("\n=== ALL FIGHTS RESOLVED (BATCH) ===");
 
@@ -1401,7 +1401,7 @@ contract BoosterFPTest is Test {
 
         // Mark event as claim ready
         vm.prank(operator);
-        booster.setEventClaimReady(eventId);
+        booster.setEventClaimReady(eventId, true);
 
         // Verify user points for all users (all should have exact match = 4 points)
         for (uint256 i = 0; i < users.length; i++) {
@@ -1681,7 +1681,7 @@ contract BoosterFPTest is Test {
 
         // Mark event as claim ready
         vm.prank(operator);
-        booster.setEventClaimReady(eventId);
+        booster.setEventClaimReady(eventId, true);
 
         // Verify user points for all users (all should have exact match = 4 points)
         for (uint256 i = 0; i < users.length; i++) {

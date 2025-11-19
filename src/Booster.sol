@@ -120,7 +120,7 @@ contract Booster is
     // ============ Events ============
     event EventCreated(string indexed eventId, uint256 numFights, uint256 indexed seasonId);
     event EventClaimDeadlineUpdated(string indexed eventId, uint256 deadline);
-    event EventClaimReady(string indexed eventId);
+    event EventClaimReady(string indexed eventId, bool claimReady);
     event FightStatusUpdated(string indexed eventId, uint256 indexed fightId, FightStatus status);
     event FightBoostCutoffUpdated(string indexed eventId, uint256 indexed fightId, uint256 cutoff);
     event FightCancelled(string indexed eventId, uint256 indexed fightId);
@@ -340,16 +340,16 @@ contract Booster is
     }
 
     /**
-     * @notice Mark an event as claim ready - final approval state
-     * @dev Once claimReady is true, fight results cannot be updated and claims are enabled
-     *      This is a one-way operation (cannot be reversed)
+     * @notice Set event claim ready state
+     * @dev When claimReady is true, fight results cannot be updated and claims are enabled
+     *      When claimReady is false, fight results can be updated and claims are disabled (only emergency use)
      * @param eventId Event identifier
+     * @param claimReady Whether the event should be claim ready (true) or not (false)
      */
-    function setEventClaimReady(string calldata eventId) external onlyRole(OPERATOR_ROLE) {
+    function setEventClaimReady(string calldata eventId, bool claimReady) external onlyRole(OPERATOR_ROLE) {
         require(events[eventId].exists, "event not exists");
-        require(!events[eventId].claimReady, "already claim ready");
-        events[eventId].claimReady = true;
-        emit EventClaimReady(eventId);
+        events[eventId].claimReady = claimReady;
+        emit EventClaimReady(eventId, claimReady);
     }
 
     /**

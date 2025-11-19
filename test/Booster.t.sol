@@ -1162,7 +1162,7 @@ contract BoosterTest is Test {
 
     function _setEventClaimReady(string memory eventId) internal {
         vm.prank(operator);
-        booster.setEventClaimReady(eventId);
+        booster.setEventClaimReady(eventId, true);
     }
 
     // ============ Cancellation Tests ============
@@ -1809,13 +1809,24 @@ contract BoosterTest is Test {
         // Mark event as claim ready
         vm.prank(operator);
         vm.expectEmit(true, false, false, false);
-        emit Booster.EventClaimReady(EVENT_1);
-        booster.setEventClaimReady(EVENT_1);
+        emit Booster.EventClaimReady(EVENT_1, true);
+        booster.setEventClaimReady(EVENT_1, true);
 
         // Verify event is now claim ready
         (,,, claimReady) = booster.getEvent(EVENT_1);
         assertTrue(claimReady);
         assertTrue(booster.isEventClaimReady(EVENT_1));
+
+        // Test setting it back to false
+        vm.prank(operator);
+        vm.expectEmit(true, false, false, false);
+        emit Booster.EventClaimReady(EVENT_1, false);
+        booster.setEventClaimReady(EVENT_1, false);
+
+        // Verify event is no longer claim ready
+        (,,, claimReady) = booster.getEvent(EVENT_1);
+        assertFalse(claimReady);
+        assertFalse(booster.isEventClaimReady(EVENT_1));
     }
 
     function testRevert_setEventClaimReady_notOperator() public {
@@ -1823,18 +1834,7 @@ contract BoosterTest is Test {
 
         vm.prank(user1);
         vm.expectRevert();
-        booster.setEventClaimReady(EVENT_1);
-    }
-
-    function testRevert_setEventClaimReady_alreadyClaimReady() public {
-        _createDefaultEvent();
-
-        vm.prank(operator);
-        booster.setEventClaimReady(EVENT_1);
-
-        vm.prank(operator);
-        vm.expectRevert("already claim ready");
-        booster.setEventClaimReady(EVENT_1);
+        booster.setEventClaimReady(EVENT_1, true);
     }
 
     function testRevert_claimReward_notClaimReady() public {
@@ -1900,7 +1900,7 @@ contract BoosterTest is Test {
 
         // Mark event as claim ready
         vm.prank(operator);
-        booster.setEventClaimReady(EVENT_1);
+        booster.setEventClaimReady(EVENT_1, true);
 
         // Cannot update result after event is claim ready
         vm.prank(operator);
@@ -2007,7 +2007,7 @@ contract BoosterTest is Test {
 
         // Mark event as claim ready
         vm.prank(admin);
-        boosterReal.setEventClaimReady(EVENT_1);
+        boosterReal.setEventClaimReady(EVENT_1, true);
 
         // User1 (winner) claims without being on allowlist
         uint256[] memory indices = boosterReal.getUserBoostIndices(EVENT_1, FIGHT_1, user1Real);
@@ -2077,7 +2077,7 @@ contract BoosterTest is Test {
 
         // Mark event as claim ready
         vm.prank(admin);
-        boosterReal.setEventClaimReady(EVENT_1);
+        boosterReal.setEventClaimReady(EVENT_1, true);
 
         // Winners claim
         uint256 totalPaidOut = 0;
