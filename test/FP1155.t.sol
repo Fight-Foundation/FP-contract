@@ -373,14 +373,16 @@ contract FP1155Test is Test {
     }
 
     function testTransferFromAgentToNonAllowlistedFails() public {
+        // This test is now obsolete - agents CAN transfer to non-allowlisted users
+        // This is required for the Booster contract to pay out rewards
         // Mint to agent
         vm.prank(minter);
         fp.mint(agent, S1, 5, "");
-        // bob is NOT allowlisted
-        vm.startPrank(agent);
-        vm.expectRevert(bytes("transfer: endpoints not allowed"));
+        // bob is NOT allowlisted, but agent can transfer to him
+        vm.prank(agent);
         fp.safeTransferFrom(agent, bob, S1, 2, "");
-        vm.stopPrank();
+        // Verify transfer succeeded
+        assertEq(fp.balanceOf(bob, S1), 2);
     }
 
     function testTransferFromAgentToAllowlistedSucceeds() public {

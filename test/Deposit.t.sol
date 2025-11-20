@@ -118,20 +118,13 @@ contract DepositTest is Test {
         fp.setTransferAllowlist(user, false);
 
         // Deposit should succeed because destination (Deposit contract) has TRANSFER_AGENT_ROLE
-        // New behavior: when destination is an agent, sender doesn't need to be allowlisted
         vm.prank(user);
         deposit.deposit(SEASON, 5);
         assertEq(deposit.deposited(user, SEASON), 5);
         assertEq(fp.balanceOf(user, SEASON), 95);
 
-        // Withdraw should revert because destination (user) doesn't have TRANSFER_AGENT_ROLE
-        // and user is not allowlisted, so endpoint check fails
-        vm.prank(user);
-        vm.expectRevert(bytes("transfer: endpoints not allowed"));
-        deposit.withdraw(SEASON, 2);
-
-        // Re-allowlist user and withdraw should succeed
-        fp.setTransferAllowlist(user, true);
+        // With the new transfer logic, agents (Deposit contract) can transfer to anyone
+        // So withdraw now succeeds even for non-allowlisted users
         vm.prank(user);
         deposit.withdraw(SEASON, 2);
         assertEq(deposit.deposited(user, SEASON), 3);

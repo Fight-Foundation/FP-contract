@@ -242,9 +242,9 @@ contract FP1155 is
             } else {
                 // Transfer between addresses
                 require(_seasonStatus[id] == SeasonStatus.OPEN, "transfer: season locked");
-                // If destination has TRANSFER_AGENT_ROLE (e.g., Booster contract), allow transfer from any user
-                // Otherwise, both endpoints must be allowed
-                if (!hasRole(TRANSFER_AGENT_ROLE, to)) {
+                // If either endpoint has TRANSFER_AGENT_ROLE (e.g., Booster contract), allow the transfer
+                // Otherwise, both endpoints must be on the allowlist
+                if (!hasRole(TRANSFER_AGENT_ROLE, from) && !hasRole(TRANSFER_AGENT_ROLE, to)) {
                     require(endpointAllowed(from) && endpointAllowed(to), "transfer: endpoints not allowed");
                 }
             }

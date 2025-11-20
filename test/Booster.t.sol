@@ -1641,4 +1641,173 @@ contract BoosterTest is Test {
         // Check totalPool
         assertEq(booster.totalPool(EVENT_1, FIGHT_1), 600 ether);
     }
+
+    // ============ Real-world Scenario Tests ============
+
+    function test_realWorldScenario_userNotOnAllowlist() public {
+        vm.startPrank(admin);
+
+        // Deploy fresh FP1155 and Booster to simulate mainnet conditions
+        FP1155 implementation = new FP1155();
+        bytes memory initData =
+            abi.encodeWithSelector(FP1155.initialize.selector, "https://api.fightfoundation.io/fp/", admin);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        FP1155 fpReal = FP1155(address(proxy));
+
+        Booster boosterReal = new Booster(address(fpReal), admin);
+
+        // Grant roles like mainnet
+        fpReal.grantRole(fpReal.TRANSFER_AGENT_ROLE(), address(boosterReal));
+        fpReal.grantRole(fpReal.MINTER_ROLE(), admin);
+        boosterReal.grantRole(boosterReal.OPERATOR_ROLE(), admin);
+
+        // Mint tokens to a regular user (NOT on allowlist)
+        address regularUser = makeAddr("regularUser");
+        fpReal.mint(regularUser, SEASON_1, 10_000 ether, "");
+
+        // Create event
+        boosterReal.createEvent(EVENT_1, 3, SEASON_1);
+
+        vm.stopPrank();
+
+        // Regular user (NOT on allowlist) tries to place boost
+        vm.prank(regularUser);
+        Booster.BoostInput[] memory boosts = new Booster.BoostInput[](1);
+        boosts[0] = Booster.BoostInput(FIGHT_1, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+
+        // This should work because Booster has TRANSFER_AGENT_ROLE
+        boosterReal.placeBoosts(EVENT_1, boosts);
+
+        // Verify boost was placed
+        assertEq(fpReal.balanceOf(regularUser, SEASON_1), 9900 ether);
+        assertEq(fpReal.balanceOf(address(boosterReal), SEASON_1), 100 ether);
+    }
+
+    function test_realWorldScenario_claimWithoutAllowlist() public {
+        vm.startPrank(admin);
+
+        // Deploy fresh FP1155 and Booster
+        FP1155 implementation = new FP1155();
+        bytes memory initData =
+            abi.encodeWithSelector(FP1155.initialize.selector, "https://api.fightfoundation.io/fp/", admin);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        FP1155 fpReal = FP1155(address(proxy));
+
+        Booster boosterReal = new Booster(address(fpReal), admin);
+
+        // Grant roles - Booster has TRANSFER_AGENT_ROLE
+        fpReal.grantRole(fpReal.TRANSFER_AGENT_ROLE(), address(boosterReal));
+        fpReal.grantRole(fpReal.MINTER_ROLE(), admin);
+        boosterReal.grantRole(boosterReal.OPERATOR_ROLE(), admin);
+
+        // Create two regular users (NOT on allowlist)
+        address user1Real = makeAddr("user1Real");
+        address user2Real = makeAddr("user2Real");
+
+        fpReal.mint(user1Real, SEASON_1, 10_000 ether, "");
+        fpReal.mint(user2Real, SEASON_1, 10_000 ether, "");
+
+        // Create event
+        boosterReal.createEvent(EVENT_1, 3, SEASON_1);
+
+        vm.stopPrank();
+
+        // Users place boosts
+        vm.prank(user1Real);
+        Booster.BoostInput[] memory boosts1 = new Booster.BoostInput[](1);
+        boosts1[0] = Booster.BoostInput(FIGHT_1, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        boosterReal.placeBoosts(EVENT_1, boosts1);
+
+        vm.prank(user2Real);
+        Booster.BoostInput[] memory boosts2 = new Booster.BoostInput[](1);
+        boosts2[0] = Booster.BoostInput(FIGHT_1, 200 ether, Booster.Corner.BLUE, Booster.WinMethod.SUBMISSION);
+        boosterReal.placeBoosts(EVENT_1, boosts2);
+
+        // Resolve fight
+        vm.prank(admin);
+        boosterReal.submitFightResult(
+            EVENT_1, FIGHT_1, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT, 10, 20, 100 ether, 2000 ether
+        );
+
+        // User1 (winner) claims without being on allowlist
+        uint256[] memory indices = boosterReal.getUserBoostIndices(EVENT_1, FIGHT_1, user1Real);
+
+        vm.prank(user1Real);
+        boosterReal.claimReward(EVENT_1, FIGHT_1, indices);
+
+        // Verify payout: stake (100) + winnings from prize pool (200-100=100 bonus, all goes to user1)
+        // prizePool = 300 - 100 + 0 = 200, user gets 200 + 100 = 300
+        assertEq(fpReal.balanceOf(user1Real, SEASON_1), 10_000 ether - 100 ether + 300 ether);
+    }
+
+    function test_realWorldScenario_multipleUsersNoneOnAllowlist() public {
+        vm.startPrank(admin);
+
+        // Deploy fresh contracts
+        FP1155 implementation = new FP1155();
+        bytes memory initData =
+            abi.encodeWithSelector(FP1155.initialize.selector, "https://api.fightfoundation.io/fp/", admin);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        FP1155 fpReal = FP1155(address(proxy));
+
+        Booster boosterReal = new Booster(address(fpReal), admin);
+
+        // Setup roles
+        fpReal.grantRole(fpReal.TRANSFER_AGENT_ROLE(), address(boosterReal));
+        fpReal.grantRole(fpReal.MINTER_ROLE(), admin);
+        boosterReal.grantRole(boosterReal.OPERATOR_ROLE(), admin);
+
+        // Create 5 regular users
+        address[] memory users = new address[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            users[i] = makeAddr(string(abi.encodePacked("user", i)));
+            fpReal.mint(users[i], SEASON_1, 10_000 ether, "");
+        }
+
+        // Create event
+        boosterReal.createEvent(EVENT_1, 1, SEASON_1);
+
+        vm.stopPrank();
+
+        // All users place boosts
+        for (uint256 i = 0; i < 5; i++) {
+            vm.prank(users[i]);
+            Booster.BoostInput[] memory boosts = new Booster.BoostInput[](1);
+            boosts[0] = Booster.BoostInput(
+                FIGHT_1,
+                (i + 1) * 100 ether,
+                i % 2 == 0 ? Booster.Corner.RED : Booster.Corner.BLUE,
+                Booster.WinMethod.KNOCKOUT
+            );
+            boosterReal.placeBoosts(EVENT_1, boosts);
+        }
+
+        // Resolve: RED + KNOCKOUT wins (users 0, 2, 4 win)
+        // Winners: user0 (100), user2 (300), user4 (500) = 900 ether total
+        // Losers: user1 (200), user3 (400) = 600 ether total
+        // sumWinnersStakes = 900, winningPoolTotalShares = (20*100) + (20*300) + (20*500) = 18000
+        vm.prank(admin);
+        boosterReal.submitFightResult(
+            EVENT_1, FIGHT_1, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT, 10, 20, 900 ether, 18_000 ether
+        );
+
+        // Winners claim
+        uint256 totalPaidOut = 0;
+        for (uint256 i = 0; i < 5; i++) {
+            if (i % 2 == 0) {
+                // Winners
+                uint256[] memory indices = boosterReal.getUserBoostIndices(EVENT_1, FIGHT_1, users[i]);
+                uint256 balBefore = fpReal.balanceOf(users[i], SEASON_1);
+
+                vm.prank(users[i]);
+                boosterReal.claimReward(EVENT_1, FIGHT_1, indices);
+
+                uint256 payout = fpReal.balanceOf(users[i], SEASON_1) - balBefore;
+                totalPaidOut += payout;
+            }
+        }
+
+        // Total pool was 1500 ether, all should be distributed (allow 1 wei rounding error)
+        assertApproxEqAbs(totalPaidOut, 1500 ether, 1);
+    }
 }
