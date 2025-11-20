@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test} from "forge-std/Test.sol";
-import {FP1155} from "../src/FP1155.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Deposit} from "../src/Deposit.sol";
+import { Test } from "forge-std/Test.sol";
+import { FP1155 } from "../src/FP1155.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Deposit } from "../src/Deposit.sol";
 
 contract DepositTest is Test {
     FP1155 fp;
