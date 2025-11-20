@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test} from "forge-std/Test.sol";
-import {FP1155} from "src/FP1155.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import { Test } from "forge-std/Test.sol";
+import { FP1155 } from "src/FP1155.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { IERC1155Receiver } from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 /**
  * @title FP1155 Upgrade Tests
@@ -25,11 +25,7 @@ contract FP1155UpgradeTest is Test, IERC1155Receiver {
         implementation = new FP1155();
 
         // Encode initializer call
-        bytes memory initData = abi.encodeWithSelector(
-            FP1155.initialize.selector,
-            "ipfs://base/{id}.json",
-            admin
-        );
+        bytes memory initData = abi.encodeWithSelector(FP1155.initialize.selector, "ipfs://base/{id}.json", admin);
 
         // Deploy proxy
         ERC1967Proxy proxyContract = new ERC1967Proxy(address(implementation), initData);
@@ -233,7 +229,7 @@ contract FP1155UpgradeTest is Test, IERC1155Receiver {
     function test_UpgradeToSameImplementation() public {
         // Upgrading to the same implementation should work (no-op)
         proxy.upgradeToAndCall(address(implementation), "");
-        
+
         // State should still be intact
         proxy.mint(user, SEASON, 100, "");
         assertEq(proxy.balanceOf(user, SEASON), 100);
@@ -247,11 +243,11 @@ contract FP1155UpgradeTest is Test, IERC1155Receiver {
     function test_UpgradeWithData() public {
         // Upgrade with additional initialization data
         FP1155 newImplementation = new FP1155();
-        
+
         // Use empty data (no additional init needed)
         bytes memory data = "";
         proxy.upgradeToAndCall(address(newImplementation), data);
-        
+
         // State preserved
         proxy.mint(user, SEASON, 100, "");
         assertEq(proxy.balanceOf(user, SEASON), 100);
@@ -261,23 +257,21 @@ contract FP1155UpgradeTest is Test, IERC1155Receiver {
     event Upgraded(address indexed implementation);
 
     // ============ ERC1155Receiver Implementation ============
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return IERC1155Receiver.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return IERC1155Receiver.onERC1155BatchReceived.selector;
     }
 

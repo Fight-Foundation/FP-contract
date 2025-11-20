@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {FP1155} from "src/FP1155.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { FP1155 } from "src/FP1155.sol";
 
 contract GrantMinterToDeployer is Script {
     function run() external {

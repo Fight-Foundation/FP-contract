@@ -10,6 +10,18 @@ optimizer = true
 optimizer_runs = 800
 via_ir = true
 
+# Format configuration (applies globally to all profiles)
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+quote_style = "double"
+number_underscore = "thousands"
+
+# CI profile - inherits from default, fmt config applies globally
+[profile.ci]
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 
 [etherscan]

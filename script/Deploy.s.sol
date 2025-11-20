@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {FP1155} from "src/FP1155.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { FP1155 } from "src/FP1155.sol";
 
 /**
  * @title Deploy (Legacy - Non-Upgradeable)
@@ -21,12 +21,12 @@ contract Deploy is Script {
         console2.log("  deployer:", msg.sender);
         console2.log("  admin:", admin);
         console2.log("  baseURI:", baseURI);
-        
+
         // NOTE: This deploys directly, not through a proxy
         // For upgradeable deployment, use DeployUpgradeable.s.sol
         token = new FP1155();
         token.initialize(baseURI, admin);
-        
+
         console2.log("FP1155 deployed at:", address(token));
         vm.stopBroadcast();
     }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import {ERC1155Holder} from "openzeppelin-contracts/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-import {FP1155} from "./FP1155.sol";
+import { AccessControl } from "openzeppelin-contracts/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import { ERC1155Holder } from "openzeppelin-contracts/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import { FP1155 } from "./FP1155.sol";
 
 /**
  * @title Booster
@@ -211,16 +211,13 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     {
         require(!events[eventId].exists, "event exists");
         require(numFights > 0, "no fights");
-        require(
-            maxFightsPerEvent == 0 || numFights <= maxFightsPerEvent,
-            "numFights exceeds maximum"
-        );
+        require(maxFightsPerEvent == 0 || numFights <= maxFightsPerEvent, "numFights exceeds maximum");
 
         // Verify season is valid and open
         require(FP.seasonStatus(seasonId) == FP1155.SeasonStatus.OPEN, "season not open");
 
         // Create event
-        events[eventId] = Event({seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0});
+        events[eventId] = Event({ seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0 });
 
         // Initialize all fights as OPEN (fightIds are 1, 2, 3, ..., numFights)
         for (uint256 i = 1; i <= numFights; i++) {
@@ -383,10 +380,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
     {
         require(events[eventId].exists, "event not exists");
         require(amount > 0, "amount=0");
-        require(
-            maxBonusDeposit == 0 || amount <= maxBonusDeposit,
-            "bonus deposit exceeds maximum"
-        );
+        require(maxBonusDeposit == 0 || amount <= maxBonusDeposit, "bonus deposit exceeds maximum");
 
         Fight storage fight = fights[eventId][fightId];
         require(fight.status != FightStatus.RESOLVED, "fight resolved");
@@ -603,10 +597,10 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
             uint256 refund = _processCancelledBoostRefund(fightBoosts, boostIndices, msg.sender);
 
             require(refund > 0, "nothing to refund");
-            
+
             // Update claimed amount to reflect refunds paid
             fight.claimedAmount += refund;
-            
+
             FP.agentTransferFrom(address(this), msg.sender, seasonId, refund, "");
             return;
         }
