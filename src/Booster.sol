@@ -265,7 +265,8 @@ contract Booster is
         require(FP.seasonStatus(seasonId) == FP1155.SeasonStatus.OPEN, "season not open");
 
         // Create event
-        events[eventId] = Event({ seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0, claimReady: false });
+        events[eventId] =
+            Event({ seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0, claimReady: false });
 
         // Validate defaultBoostCutoff if provided
         if (defaultBoostCutoff > 0) {
@@ -1052,12 +1053,10 @@ contract Booster is
      * @param user Address claiming the reward
      * @return payout Total payout amount for this fight
      */
-    function _processFightClaim(
-        string calldata eventId,
-        uint256 fightId,
-        uint256[] calldata boostIndices,
-        address user
-    ) internal returns (uint256 payout) {
+    function _processFightClaim(string calldata eventId, uint256 fightId, uint256[] calldata boostIndices, address user)
+        internal
+        returns (uint256 payout)
+    {
         Event storage evt = events[eventId];
         _validateFightId(evt, fightId);
 
@@ -1085,15 +1084,7 @@ contract Booster is
 
         uint256 prizePool = fight.originalPool - fight.sumWinnersStakes + fight.bonusPool;
         for (uint256 i = 0; i < boostIndices.length; i++) {
-            payout += _processWinningBoostClaim(
-                eventId,
-                fightId,
-                fight,
-                fightBoosts,
-                boostIndices[i],
-                user,
-                prizePool
-            );
+            payout += _processWinningBoostClaim(eventId, fightId, fight, fightBoosts, boostIndices[i], user, prizePool);
         }
         return payout;
     }
