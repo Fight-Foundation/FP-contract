@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {FP1155} from "src/FP1155.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { FP1155 } from "src/FP1155.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title UpgradeFP1155
@@ -14,7 +14,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  *     --broadcast \
  *     --verify \
  *     -vvvv
- * 
+ *
  * Required env vars:
  *   PRIVATE_KEY - Admin private key (must have DEFAULT_ADMIN_ROLE)
  *   PROXY_ADDRESS - Address of the existing proxy to upgrade

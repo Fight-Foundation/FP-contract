@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {Booster} from "../src/Booster.sol";
-import {FP1155} from "../src/FP1155.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { Booster } from "../src/Booster.sol";
+import { FP1155 } from "../src/FP1155.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract BoosterTest is Test {
     Booster public booster;
@@ -28,11 +28,8 @@ contract BoosterTest is Test {
 
         // Deploy FP1155 via ERC1967Proxy and initialize
         FP1155 implementation = new FP1155();
-        bytes memory initData = abi.encodeWithSelector(
-            FP1155.initialize.selector,
-            "https://api.fightfoundation.io/fp/",
-            admin
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(FP1155.initialize.selector, "https://api.fightfoundation.io/fp/", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         fp = FP1155(address(proxy));
 
@@ -46,10 +43,10 @@ contract BoosterTest is Test {
         booster.grantRole(booster.OPERATOR_ROLE(), operator);
 
         // Mint FP to users
-        fp.mint(user1, SEASON_1, 10000 ether, "");
-        fp.mint(user2, SEASON_1, 10000 ether, "");
-        fp.mint(user3, SEASON_1, 10000 ether, "");
-        fp.mint(operator, SEASON_1, 50000 ether, "");
+        fp.mint(user1, SEASON_1, 10_000 ether, "");
+        fp.mint(user2, SEASON_1, 10_000 ether, "");
+        fp.mint(user3, SEASON_1, 10_000 ether, "");
+        fp.mint(operator, SEASON_1, 50_000 ether, "");
 
         // Allowlist participants for transfers
         fp.setTransferAllowlist(user1, true);
@@ -143,7 +140,7 @@ contract BoosterTest is Test {
         assertEq(userBoosts2[0].amount, 200 ether);
 
         // Verify FP transferred
-        assertEq(fp.balanceOf(user1, SEASON_1), 10000 ether - 300 ether);
+        assertEq(fp.balanceOf(user1, SEASON_1), 10_000 ether - 300 ether);
         assertEq(fp.balanceOf(address(booster), SEASON_1), 300 ether);
 
         // Verify originalPool updated
@@ -257,7 +254,7 @@ contract BoosterTest is Test {
         assertEq(userBoosts[0].amount, 150 ether);
 
         // Verify FP transferred
-        assertEq(fp.balanceOf(user1, SEASON_1), 10000 ether - 150 ether);
+        assertEq(fp.balanceOf(user1, SEASON_1), 10_000 ether - 150 ether);
 
         // Verify originalPool updated
         (,,,, uint256 originalPool,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
@@ -335,7 +332,7 @@ contract BoosterTest is Test {
         assertEq(bonusPool, 1000 ether);
 
         // Verify FP transferred
-        assertEq(fp.balanceOf(operator, SEASON_1), 50000 ether - 1000 ether);
+        assertEq(fp.balanceOf(operator, SEASON_1), 50_000 ether - 1000 ether);
         assertEq(fp.balanceOf(address(booster), SEASON_1), 1000 ether);
     }
 
@@ -652,7 +649,7 @@ contract BoosterTest is Test {
         booster.claimReward(EVENT_1, FIGHT_1, indices);
 
         // User1 gets entire pool: 1100 ether
-        assertEq(fp.balanceOf(user1, SEASON_1), 10000 ether - 100 ether + 1100 ether);
+        assertEq(fp.balanceOf(user1, SEASON_1), 10_000 ether - 100 ether + 1100 ether);
 
         // Set short deadline and advance beyond it, check purge sweeps remaining (none expected)
         vm.prank(operator);
@@ -691,7 +688,7 @@ contract BoosterTest is Test {
         vm.prank(user1);
         booster.claimReward(EVENT_1, FIGHT_1, indices);
 
-        assertEq(fp.balanceOf(user1, SEASON_1), 10000 ether); // Gets everything back
+        assertEq(fp.balanceOf(user1, SEASON_1), 10_000 ether); // Gets everything back
 
         // Set deadline and attempt purge (should sweep zero)
         vm.prank(operator);
@@ -1240,8 +1237,8 @@ contract BoosterTest is Test {
         indices2[0] = 0; // BLUE + SUBMISSION → 20 points
         indices2[1] = 2; // BLUE + DECISION → 10 points
 
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices1});
-        claims[1] = Booster.ClaimInput({fightId: FIGHT_2, boostIndices: indices2});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices1 });
+        claims[1] = Booster.ClaimInput({ fightId: FIGHT_2, boostIndices: indices2 });
 
         uint256 balanceBefore = fp.balanceOf(user1, SEASON_1);
 
@@ -1302,8 +1299,8 @@ contract BoosterTest is Test {
         uint256[] memory indices1 = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
         uint256[] memory indices2 = booster.getUserBoostIndices(EVENT_1, FIGHT_2, user1);
 
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices1});
-        claims[1] = Booster.ClaimInput({fightId: FIGHT_2, boostIndices: indices2});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices1 });
+        claims[1] = Booster.ClaimInput({ fightId: FIGHT_2, boostIndices: indices2 });
 
         uint256 balanceBefore = fp.balanceOf(user1, SEASON_1);
 
@@ -1351,8 +1348,8 @@ contract BoosterTest is Test {
         uint256[] memory indices1 = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
         uint256[] memory indices2 = booster.getUserBoostIndices(EVENT_1, FIGHT_2, user1);
 
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices1});
-        claims[1] = Booster.ClaimInput({fightId: FIGHT_2, boostIndices: indices2});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices1 });
+        claims[1] = Booster.ClaimInput({ fightId: FIGHT_2, boostIndices: indices2 });
 
         uint256 balanceBefore = fp.balanceOf(user1, SEASON_1);
 
@@ -1396,8 +1393,8 @@ contract BoosterTest is Test {
         uint256[] memory indices1 = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
         uint256[] memory indices2 = booster.getUserBoostIndices(EVENT_1, FIGHT_2, user1);
 
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices1});
-        claims[1] = Booster.ClaimInput({fightId: FIGHT_2, boostIndices: indices2});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices1 });
+        claims[1] = Booster.ClaimInput({ fightId: FIGHT_2, boostIndices: indices2 });
 
         uint256 balanceBefore = fp.balanceOf(user1, SEASON_1);
 
@@ -1434,8 +1431,8 @@ contract BoosterTest is Test {
         uint256[] memory indices1 = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
         uint256[] memory indices2 = booster.getUserBoostIndices(EVENT_1, FIGHT_2, user1);
 
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices1});
-        claims[1] = Booster.ClaimInput({fightId: FIGHT_2, boostIndices: indices2});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices1 });
+        claims[1] = Booster.ClaimInput({ fightId: FIGHT_2, boostIndices: indices2 });
 
         uint256 balanceBefore = fp.balanceOf(user1, SEASON_1);
 
@@ -1460,7 +1457,7 @@ contract BoosterTest is Test {
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = new uint256[](1);
         indices[0] = 0;
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("event not exists");
@@ -1484,7 +1481,7 @@ contract BoosterTest is Test {
 
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("claim deadline passed");
@@ -1501,7 +1498,7 @@ contract BoosterTest is Test {
 
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("not resolved");
@@ -1517,7 +1514,7 @@ contract BoosterTest is Test {
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = new uint256[](1);
         indices[0] = 0;
-        claims[0] = Booster.ClaimInput({fightId: INVALID_FIGHT_ID, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: INVALID_FIGHT_ID, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("fightId not in event");
@@ -1532,7 +1529,7 @@ contract BoosterTest is Test {
 
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = new uint256[](0);
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("no boost indices");
@@ -1552,7 +1549,7 @@ contract BoosterTest is Test {
 
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user2);
         vm.expectRevert("not boost owner");
@@ -1581,7 +1578,7 @@ contract BoosterTest is Test {
 
         // Try to claim again via claimRewards
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("already claimed");
@@ -1602,7 +1599,7 @@ contract BoosterTest is Test {
 
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("boost did not win");
@@ -1619,7 +1616,7 @@ contract BoosterTest is Test {
         Booster.ClaimInput[] memory claims = new Booster.ClaimInput[](1);
         uint256[] memory indices = new uint256[](1);
         indices[0] = 0;
-        claims[0] = Booster.ClaimInput({fightId: FIGHT_1, boostIndices: indices});
+        claims[0] = Booster.ClaimInput({ fightId: FIGHT_1, boostIndices: indices });
 
         vm.prank(user1);
         vm.expectRevert("nothing to claim");

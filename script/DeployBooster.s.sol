@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {FP1155} from "src/FP1155.sol";
-import {Booster} from "src/Booster.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { FP1155 } from "src/FP1155.sol";
+import { Booster } from "src/Booster.sol";
 
 /**
  * @title DeployBooster
@@ -31,11 +31,11 @@ contract DeployBooster is Script {
 
         FP1155 fp = FP1155(fpAddr);
         console2.log("Using FP1155:", fpAddr);
-    console2.log("Admin:", admin);
+        console2.log("Admin:", admin);
         console2.log("Operator:", operator);
 
-    // Deploy booster with admin as DEFAULT_ADMIN_ROLE holder
-    booster = new Booster(fpAddr, admin);
+        // Deploy booster with admin as DEFAULT_ADMIN_ROLE holder
+        booster = new Booster(fpAddr, admin);
         console2.log("Booster deployed at:", address(booster));
 
         // Grant Booster TRANSFER_AGENT_ROLE on FP1155 so it can move FP.

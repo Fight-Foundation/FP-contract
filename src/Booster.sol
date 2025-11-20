@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import {ERC1155Holder} from "openzeppelin-contracts/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-import {FP1155} from "./FP1155.sol";
+import { AccessControl } from "openzeppelin-contracts/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import { ERC1155Holder } from "openzeppelin-contracts/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import { FP1155 } from "./FP1155.sol";
 
 /**
  * @title Booster
@@ -182,7 +182,7 @@ contract Booster is AccessControl, ReentrancyGuard, ERC1155Holder {
         require(FP.seasonStatus(seasonId) == FP1155.SeasonStatus.OPEN, "season not open");
 
         // Create event
-        events[eventId] = Event({seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0});
+        events[eventId] = Event({ seasonId: seasonId, numFights: numFights, exists: true, claimDeadline: 0 });
 
         // Initialize all fights as OPEN (fightIds are 1, 2, 3, ..., numFights)
         for (uint256 i = 1; i <= numFights; i++) {

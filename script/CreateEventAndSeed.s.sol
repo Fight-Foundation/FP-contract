@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {FP1155} from "src/FP1155.sol";
-import {Booster} from "src/Booster.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { FP1155 } from "src/FP1155.sol";
+import { Booster } from "src/Booster.sol";
 
 /**
  * @title CreateEventAndSeed
@@ -67,10 +67,18 @@ contract CreateEventAndSeed is Script {
         // Parse arrays
         ParsedArrays memory P;
         P.fights = _parseUintArray(vm.envString("FIGHT_IDS"));
-        if (_hasEnv("BONUS_AMOUNTS")) P.bonusAmts = _parseUintArray(vm.envString("BONUS_AMOUNTS"));
-        if (_hasEnv("BOOST_AMOUNTS")) P.boostAmts = _parseUintArray(vm.envString("BOOST_AMOUNTS"));
-        if (_hasEnv("BOOST_WINNERS")) P.boostWinners = _parseCornerArray(vm.envString("BOOST_WINNERS"));
-        if (_hasEnv("BOOST_METHODS")) P.boostMethods = _parseMethodArray(vm.envString("BOOST_METHODS"));
+        if (_hasEnv("BONUS_AMOUNTS")) {
+            P.bonusAmts = _parseUintArray(vm.envString("BONUS_AMOUNTS"));
+        }
+        if (_hasEnv("BOOST_AMOUNTS")) {
+            P.boostAmts = _parseUintArray(vm.envString("BOOST_AMOUNTS"));
+        }
+        if (_hasEnv("BOOST_WINNERS")) {
+            P.boostWinners = _parseCornerArray(vm.envString("BOOST_WINNERS"));
+        }
+        if (_hasEnv("BOOST_METHODS")) {
+            P.boostMethods = _parseMethodArray(vm.envString("BOOST_METHODS"));
+        }
         if (resolve) {
             P.resultWinners = _parseCornerArray(vm.envString("RESULT_WINNERS"));
             P.resultMethods = _parseMethodArray(vm.envString("RESULT_METHODS"));
