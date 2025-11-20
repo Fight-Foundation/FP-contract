@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { Script, console2 } from "forge-std/Script.sol";
-import { FP1155 } from "src/FP1155.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Script, console2} from "forge-std/Script.sol";
+import {FP1155} from "src/FP1155.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployUpgradeable is Script {
     function run() external returns (address proxy, address implementation) {
