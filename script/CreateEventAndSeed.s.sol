@@ -101,7 +101,7 @@ contract CreateEventAndSeed is Script {
             for (uint256 i = 0; i < P.fights.length && i < P.bonusAmts.length; i++) {
                 uint256 amt = P.bonusAmts[i];
                 if (amt == 0) continue;
-                booster.depositBonus(eventId, P.fights[i], amt);
+                booster.depositBonus(eventId, P.fights[i], amt, false);
                 console2.log("Deposited bonus", amt, "for fight", P.fights[i]);
             }
         }

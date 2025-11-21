@@ -445,8 +445,9 @@ contract Booster is
      * @param eventId Event identifier
      * @param fightId Fight number
      * @param amount Amount of FP to deposit as bonus
+     * @param force If true, allows deposit even when fight is RESOLVED (for result corrections)
      */
-    function depositBonus(string calldata eventId, uint256 fightId, uint256 amount)
+    function depositBonus(string calldata eventId, uint256 fightId, uint256 amount, bool force)
         external
         onlyRole(OPERATOR_ROLE)
         nonReentrant
@@ -456,7 +457,8 @@ contract Booster is
         require(maxBonusDeposit == 0 || amount <= maxBonusDeposit, "bonus deposit exceeds maximum");
 
         Fight storage fight = fights[eventId][fightId];
-        require(fight.status != FightStatus.RESOLVED, "fight resolved");
+        // Allow deposit if force is true, otherwise require fight not to be RESOLVED
+        require(force || fight.status != FightStatus.RESOLVED, "fight resolved");
 
         uint256 seasonId = events[eventId].seasonId;
 

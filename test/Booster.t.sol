@@ -395,7 +395,7 @@ contract BoosterTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, true, true);
         emit Booster.BonusDeposited(EVENT_1, FIGHT_1, operator, 1000 ether);
-        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether, false);
 
         // Verify bonus pool updated
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
@@ -410,8 +410,8 @@ contract BoosterTest is Test {
         _createDefaultEvent();
 
         vm.startPrank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, 500 ether);
-        booster.depositBonus(EVENT_1, FIGHT_1, 300 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 500 ether, false);
+        booster.depositBonus(EVENT_1, FIGHT_1, 300 ether, false);
         vm.stopPrank();
 
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
@@ -423,7 +423,7 @@ contract BoosterTest is Test {
 
         vm.prank(user1);
         vm.expectRevert();
-        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether, false);
     }
 
     function testRevert_depositBonus_resolved() public {
@@ -432,7 +432,7 @@ contract BoosterTest is Test {
 
         vm.prank(operator);
         vm.expectRevert("fight resolved");
-        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether, false);
     }
 
     // ============ Fight Status Tests ============
@@ -703,7 +703,7 @@ contract BoosterTest is Test {
 
         // Add bonus pool
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether, false);
 
         // User1: RED + KNOCKOUT = 20 points
         vm.prank(user1);
@@ -1407,7 +1407,7 @@ contract BoosterTest is Test {
 
         // Should be able to deposit up to the limit
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 1000 ether, false);
 
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
         assertEq(bonusPool, 1000 ether);
@@ -1423,7 +1423,7 @@ contract BoosterTest is Test {
         // Try to deposit more than the limit
         vm.prank(operator);
         vm.expectRevert("bonus deposit exceeds maximum");
-        booster.depositBonus(EVENT_1, FIGHT_1, 1001 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 1001 ether, false);
     }
 
     function test_depositBonus_unlimitedWhenMaxIsZero() public {
@@ -1431,7 +1431,7 @@ contract BoosterTest is Test {
 
         // Max is 0 by default (unlimited), should be able to deposit any amount
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, 10_000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 10_000 ether, false);
 
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
         assertEq(bonusPool, 10_000 ether);
@@ -1616,10 +1616,10 @@ contract BoosterTest is Test {
 
         // Add bonus pools
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, 500 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 500 ether, false);
 
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_2, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_2, 1000 ether, false);
 
         // Resolve fights
         // FIGHT_1: user1 wins with 100 ether stake, 20 points
@@ -1664,7 +1664,7 @@ contract BoosterTest is Test {
         _createDefaultEvent();
 
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_2, 1000 ether);
+        booster.depositBonus(EVENT_1, FIGHT_2, 1000 ether, false);
 
         // User1 places boosts on multiple fights
         Booster.BoostInput[] memory boosts1 = new Booster.BoostInput[](1);
@@ -2020,7 +2020,7 @@ contract BoosterTest is Test {
 
         // Deposit bonus
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, 500 ether);
+        booster.depositBonus(EVENT_1, FIGHT_1, 500 ether, false);
 
         // Check totalPool
         assertEq(booster.totalPool(EVENT_1, FIGHT_1), 600 ether);
@@ -2356,7 +2356,7 @@ contract BoosterTest is Test {
 
         // Operator deposits bonus
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, bonusAmount);
+        booster.depositBonus(EVENT_1, FIGHT_1, bonusAmount, false);
 
         // Verify initial state
         (

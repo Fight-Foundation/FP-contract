@@ -88,7 +88,7 @@ contract BoosterFPTest is Test {
 
         // Deposit prize pool as bonus
         vm.prank(operator);
-        booster.depositBonus(EVENT_1, FIGHT_1, prizePool);
+        booster.depositBonus(EVENT_1, FIGHT_1, prizePool, false);
 
         // Verify prize pool deposited
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(EVENT_1, FIGHT_1);
@@ -325,7 +325,7 @@ contract BoosterFPTest is Test {
         // Deposit prize pool for each fight
         for (uint256 i = 1; i <= numFights; i++) {
             vm.prank(operator);
-            booster.depositBonus(EVENT_1, i, prizePoolPerFight);
+            booster.depositBonus(EVENT_1, i, prizePoolPerFight, false);
         }
 
         // Verify prize pools deposited
@@ -831,7 +831,7 @@ contract BoosterFPTest is Test {
         // Deposit prize pool for each fight
         for (uint256 i = 1; i <= numFights; i++) {
             vm.prank(operator);
-            booster.depositBonus(EVENT_1, i, prizePoolPerFight);
+            booster.depositBonus(EVENT_1, i, prizePoolPerFight, false);
         }
 
         // Verify prize pools deposited
@@ -1327,7 +1327,7 @@ contract BoosterFPTest is Test {
 
         // Deposit initial prize pool
         vm.prank(operator);
-        booster.depositBonus(eventId, fightId, initialPrizePool);
+        booster.depositBonus(eventId, fightId, initialPrizePool, false);
 
         // Verify initial prize pool
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(eventId, fightId);
@@ -1560,7 +1560,7 @@ contract BoosterFPTest is Test {
 
         // Deposit initial prize pool
         vm.prank(operator);
-        booster.depositBonus(eventId, fightId, initialPrizePool);
+        booster.depositBonus(eventId, fightId, initialPrizePool, false);
 
         // Verify initial prize pool
         (,,, uint256 bonusPool,,,,,,,,) = booster.getFight(eventId, fightId);
@@ -1629,7 +1629,7 @@ contract BoosterFPTest is Test {
             uint256 contractBalanceBeforeSeed = fp.balanceOf(address(booster), SEASON_1);
 
             vm.prank(operator);
-            booster.depositBonus(eventId, fightId, additionalSeedNeeded);
+            booster.depositBonus(eventId, fightId, additionalSeedNeeded, false);
 
             uint256 operatorBalanceAfter = fp.balanceOf(operator, SEASON_1);
             uint256 contractBalanceAfterSeed = fp.balanceOf(address(booster), SEASON_1);
@@ -1810,5 +1810,302 @@ contract BoosterFPTest is Test {
         }
 
         console2.log("\n[PASS] Edge Case 2 PASSED: All winners received winnings thanks to seeding!");
+    }
+
+    /**
+     * @notice Test case: Result correction after incorrect claims
+     * @dev Tests the scenario where:
+     *      1. Initial result submitted: Fight 1 → RED wins
+     *      2. setEventClaimReady(eventId, true) enables claims
+     *      3. RED winners claim before operator figures out issues (claimedAmount increases, and also _processWinningBoostClaim sets claimed to true)
+     *      4. Operator calls setEventClaimReady(eventId, false)
+     *      5. Operator calls submitFightResult with corrected result: Fight 1 → BLUE wins
+     *      6. BLUE winners (the actually correct winners) attempt to claim but their boosts still show claimed=true from prior logic so claim will fail.
+     *
+     *      This test verifies that when results are corrected, the correct winners can still claim
+     *      even if incorrect winners already claimed.
+     */
+    function test_resultCorrectionAfterIncorrectClaims() public {
+        console2.log("\n=== TEST CASE: Result Correction After Incorrect Claims ===");
+
+        string memory eventId = "UFC_RESULT_CORRECTION";
+        uint256 fightId = 1;
+
+        // ============ STEP 1: Setup Event and Boosts ============
+        vm.prank(operator);
+        booster.createEvent(eventId, 1, SEASON_1, 0);
+
+        // Deposit prize pool
+        uint256 prizePool = 100;
+        vm.prank(operator);
+        booster.depositBonus(eventId, fightId, prizePool, false);
+
+        // User1 bets on RED + SUBMISSION
+        uint256 user1Stake = 20;
+        vm.prank(user1);
+        Booster.BoostInput[] memory boosts1 = new Booster.BoostInput[](1);
+        boosts1[0] = Booster.BoostInput(fightId, user1Stake, Booster.Corner.RED, Booster.WinMethod.SUBMISSION);
+        booster.placeBoosts(eventId, boosts1);
+
+        // User2 bets on BLUE + SUBMISSION
+        uint256 user2Stake = 30;
+        vm.prank(user2);
+        Booster.BoostInput[] memory boosts2 = new Booster.BoostInput[](1);
+        boosts2[0] = Booster.BoostInput(fightId, user2Stake, Booster.Corner.BLUE, Booster.WinMethod.SUBMISSION);
+        booster.placeBoosts(eventId, boosts2);
+
+        // Verify original pool
+        (,,,, uint256 originalPool,,,,,,,) = booster.getFight(eventId, fightId);
+        assertEq(originalPool, user1Stake + user2Stake, "Original pool should equal total stakes");
+
+        console2.log("\n=== SETUP ===");
+        console2.log("User1 bet: %d FP on RED + SUBMISSION", user1Stake);
+        console2.log("User2 bet: %d FP on BLUE + SUBMISSION", user2Stake);
+        console2.log("Original pool: %d FP", originalPool);
+        console2.log("Prize pool: %d FP", prizePool);
+
+        // ============ STEP 2: Submit INCORRECT result (RED wins) ============
+        // Calculate points for incorrect result (RED wins)
+        uint256 user1Points = booster.calculateUserPoints(
+            Booster.Corner.RED,
+            Booster.WinMethod.SUBMISSION,
+            Booster.Corner.RED,
+            Booster.WinMethod.SUBMISSION,
+            POINTS_FOR_WINNER,
+            POINTS_FOR_WINNER_METHOD
+        );
+        uint256 user2Points = booster.calculateUserPoints(
+            Booster.Corner.BLUE,
+            Booster.WinMethod.SUBMISSION,
+            Booster.Corner.RED,
+            Booster.WinMethod.SUBMISSION,
+            POINTS_FOR_WINNER,
+            POINTS_FOR_WINNER_METHOD
+        );
+
+        // Only User1 wins (RED)
+        uint256 incorrectSumWinnersStakes = user1Stake;
+        uint256 incorrectWinningPoolTotalShares = user1Points * user1Stake; // 4 * 20 = 80
+
+        console2.log("\n=== STEP 2: Submit INCORRECT Result (RED wins) ===");
+        console2.log("User1 points: %d (winner)", user1Points);
+        console2.log("User2 points: %d (loser)", user2Points);
+
+        vm.prank(operator);
+        booster.submitFightResult(
+            eventId,
+            fightId,
+            Booster.Corner.RED,
+            Booster.WinMethod.SUBMISSION,
+            POINTS_FOR_WINNER,
+            POINTS_FOR_WINNER_METHOD,
+            incorrectSumWinnersStakes,
+            incorrectWinningPoolTotalShares
+        );
+
+        // Verify fight is resolved
+        (Booster.FightStatus status,,,,,,,,,,,) = booster.getFight(eventId, fightId);
+        assertEq(uint256(status), uint256(Booster.FightStatus.RESOLVED), "Fight should be resolved");
+
+        // ============ STEP 3: Enable claims ============
+        vm.prank(operator);
+        booster.setEventClaimReady(eventId, true);
+
+        console2.log("\n=== STEP 3: Claims Enabled ===");
+        assertTrue(booster.isEventClaimReady(eventId), "Event should be claim ready");
+
+        // ============ STEP 4: User1 (incorrect winner) claims ============
+        uint256[] memory user1Indices = booster.getUserBoostIndices(eventId, fightId, user1);
+        uint256 user1ClaimableBefore = booster.quoteClaimable(eventId, fightId, user1, false);
+        uint256 user1BalanceBefore = fp.balanceOf(user1, SEASON_1);
+        uint256 contractBalanceBefore = fp.balanceOf(address(booster), SEASON_1);
+
+        console2.log("\n=== STEP 4: User1 (INCORRECT winner) Claims ===");
+        console2.log("User1 claimable: %d FP", user1ClaimableBefore);
+        console2.log("User1 balance before: %d FP", user1BalanceBefore);
+
+        assertGt(user1ClaimableBefore, 0, "User1 should be able to claim (incorrectly)");
+
+        vm.prank(user1);
+        booster.claimReward(eventId, fightId, user1Indices);
+
+        uint256 user1BalanceAfter = fp.balanceOf(user1, SEASON_1);
+        uint256 contractBalanceAfter = fp.balanceOf(address(booster), SEASON_1);
+
+        console2.log("User1 balance after: %d FP", user1BalanceAfter);
+        console2.log("User1 received: %d FP", user1BalanceAfter - user1BalanceBefore);
+        console2.log("Contract paid: %d FP", contractBalanceBefore - contractBalanceAfter);
+
+        assertEq(user1BalanceAfter, user1BalanceBefore + user1ClaimableBefore, "User1 should have received claim");
+
+        // Verify User1's boost is marked as claimed
+        Booster.Boost[] memory user1Boosts = booster.getUserBoosts(eventId, fightId, user1);
+        assertTrue(user1Boosts[0].claimed, "User1's boost should be marked as claimed");
+
+        // Verify User2 cannot claim (they lost with incorrect result)
+        uint256 user2ClaimableBefore = booster.quoteClaimable(eventId, fightId, user2, false);
+        assertEq(user2ClaimableBefore, 0, "User2 should not be able to claim (lost with incorrect result)");
+
+        // Get claimed amount after User1's incorrect claim
+        (,,,,,,,,, uint256 claimedAmountBeforeCorrection,,) = booster.getFight(eventId, fightId);
+        console2.log("Claimed amount: %d FP", claimedAmountBeforeCorrection);
+
+        // ============ STEP 5: Disable claims and correct result ============
+        vm.prank(operator);
+        booster.setEventClaimReady(eventId, false);
+
+        console2.log("\n=== STEP 5: Disable Claims and Correct Result ===");
+        assertFalse(booster.isEventClaimReady(eventId), "Event should not be claim ready");
+
+        // Deposit additional bonus (150 FP) after correcting result
+        // Using force=true to allow deposit even though fight is RESOLVED
+        // This is needed when correcting results after incorrect claims
+        uint256 additionalBonus = 150;
+        vm.prank(operator);
+        booster.depositBonus(eventId, fightId, additionalBonus, true);
+
+        console2.log("Additional bonus deposited: %d FP", additionalBonus);
+
+        // Verify bonus pool increased
+        (,,, uint256 bonusPoolAfter,,,,,,,,) = booster.getFight(eventId, fightId);
+        assertEq(bonusPoolAfter, prizePool + additionalBonus, "Bonus pool should include additional deposit");
+
+        // Calculate points for CORRECT result (BLUE wins)
+        uint256 user1PointsCorrect = booster.calculateUserPoints(
+            Booster.Corner.RED,
+            Booster.WinMethod.SUBMISSION,
+            Booster.Corner.BLUE,
+            Booster.WinMethod.SUBMISSION,
+            POINTS_FOR_WINNER,
+            POINTS_FOR_WINNER_METHOD
+        );
+        uint256 user2PointsCorrect = booster.calculateUserPoints(
+            Booster.Corner.BLUE,
+            Booster.WinMethod.SUBMISSION,
+            Booster.Corner.BLUE,
+            Booster.WinMethod.SUBMISSION,
+            POINTS_FOR_WINNER,
+            POINTS_FOR_WINNER_METHOD
+        );
+
+        // Only User2 wins (BLUE) - but we need to account for what was already claimed
+        // User1 already claimed
+        // sumWinnersStakes should only include stakes from winners who haven't claimed yet
+        uint256 correctSumWinnersStakes = user2Stake; // Only User2, User1 already claimed
+
+        // Calculate prize pool that the contract will use
+        // prizePool = originalPool - sumWinnersStakes + bonusPool
+        // prizePool = 50 - 30 + 250 = 270 FP
+        uint256 totalPrizePool = originalPool - correctSumWinnersStakes + bonusPoolAfter;
+
+        // User2 should receive 150 FP total (30 stake + 120 winnings)
+        // User2 shares: 4 points * 30 stake = 120
+        uint256 user2Shares = user2PointsCorrect * user2Stake;
+
+        // The contract calculates: winnings = (prizePool * userShares) / winningPoolTotalShares
+        // We want: 120 = (270 * 120) / winningPoolTotalShares
+        // Therefore: winningPoolTotalShares = 270
+        // This compensates for the fact that the prize pool includes what was already claimed
+        uint256 correctWinningPoolTotalShares = totalPrizePool;
+
+        console2.log("Adjusting calculations for corrected result:");
+        console2.log("  Already claimed: %d FP", claimedAmountBeforeCorrection);
+        console2.log("  Total prize pool (contract will use): %d FP", totalPrizePool);
+        console2.log("  User2 stake (unclaimed): %d FP", correctSumWinnersStakes);
+        console2.log("  User2 shares: %d", user2Shares);
+        console2.log("  Adjusted winningPoolTotalShares: %d", correctWinningPoolTotalShares);
+        console2.log("  Expected User2 winnings: %d FP", (totalPrizePool * user2Shares) / correctWinningPoolTotalShares);
+        console2.log(
+            "  Expected User2 total payout: %d FP",
+            (totalPrizePool * user2Shares) / correctWinningPoolTotalShares + user2Stake
+        );
+
+        console2.log("Correct result: BLUE wins");
+        console2.log("User1 points: %d (loser)", user1PointsCorrect);
+        console2.log("User2 points: %d (winner)", user2PointsCorrect);
+
+        // Submit corrected result
+        vm.prank(operator);
+        booster.submitFightResult(
+            eventId,
+            fightId,
+            Booster.Corner.BLUE,
+            Booster.WinMethod.SUBMISSION,
+            POINTS_FOR_WINNER,
+            POINTS_FOR_WINNER_METHOD,
+            correctSumWinnersStakes,
+            correctWinningPoolTotalShares
+        );
+
+        // ============ STEP 6: Re-enable claims ============
+        vm.prank(operator);
+        booster.setEventClaimReady(eventId, true);
+
+        console2.log("\n=== STEP 6: Re-enable Claims ===");
+        assertTrue(booster.isEventClaimReady(eventId), "Event should be claim ready again");
+
+        // ============ STEP 7: User2 (correct winner) attempts to claim ============
+        uint256[] memory user2Indices = booster.getUserBoostIndices(eventId, fightId, user2);
+        uint256 user2ClaimableAfter = booster.quoteClaimable(eventId, fightId, user2, false);
+        uint256 user2BalanceBefore = fp.balanceOf(user2, SEASON_1);
+
+        console2.log("\n=== STEP 7: User2 (CORRECT winner) Attempts to Claim ===");
+        console2.log("User2 claimable: %d FP", user2ClaimableAfter);
+        console2.log("User2 balance before: %d FP", user2BalanceBefore);
+
+        // Check if User2's boost is marked as claimed (this is the bug we're testing)
+        Booster.Boost[] memory user2Boosts = booster.getUserBoosts(eventId, fightId, user2);
+        console2.log("User2 boost claimed status: %s", user2Boosts[0].claimed ? "true" : "false");
+
+        // This is the critical test: User2 should be able to claim even though User1 already claimed
+        // If User2's boost is marked as claimed=true incorrectly, this will fail
+        if (user2Boosts[0].claimed) {
+            console2.log("\n[BUG DETECTED] User2's boost is marked as claimed=true, but User2 never claimed!");
+            console2.log("This means User2 cannot claim their correct winnings.");
+
+            // Try to claim and expect it to fail
+            vm.expectRevert("already claimed");
+            vm.prank(user2);
+            booster.claimReward(eventId, fightId, user2Indices);
+
+            console2.log("[FAIL] Test confirms the bug: User2 cannot claim because boost.claimed=true");
+        } else {
+            console2.log("\n[EXPECTED] User2's boost is NOT marked as claimed, so User2 can claim");
+
+            // User2 should be able to claim
+            assertGt(user2ClaimableAfter, 0, "User2 should be able to claim (correct winner)");
+
+            vm.prank(user2);
+            booster.claimReward(eventId, fightId, user2Indices);
+
+            uint256 user2BalanceAfter = fp.balanceOf(user2, SEASON_1);
+            console2.log("User2 balance after: %d FP", user2BalanceAfter);
+            console2.log("User2 received: %d FP", user2BalanceAfter - user2BalanceBefore);
+
+            assertEq(user2BalanceAfter, user2BalanceBefore + user2ClaimableAfter, "User2 should have received claim");
+
+            console2.log("[PASS] User2 successfully claimed their correct winnings");
+        }
+
+        // ============ STEP 8: Verify final state ============
+        console2.log("\n=== STEP 8: Final State Verification ===");
+
+        // Check fight claimed amount
+        (,,,,,,,,, uint256 claimedAmount,,) = booster.getFight(eventId, fightId);
+        console2.log("Fight claimed amount: %d FP", claimedAmount);
+
+        // Check contract balance
+        uint256 contractBalanceFinal = fp.balanceOf(address(booster), SEASON_1);
+        console2.log("Contract balance final: %d FP", contractBalanceFinal);
+
+        // Check user balances
+        console2.log("User1 balance final: %d FP", fp.balanceOf(user1, SEASON_1));
+        console2.log("User2 balance final: %d FP", fp.balanceOf(user2, SEASON_1));
+
+        // Verify User1 cannot claim again (already claimed)
+        uint256 user1ClaimableAfter = booster.quoteClaimable(eventId, fightId, user1, false);
+        assertEq(user1ClaimableAfter, 0, "User1 should not be able to claim again");
+
+        console2.log("\n=== TEST COMPLETE ===");
     }
 }

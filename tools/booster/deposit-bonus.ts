@@ -17,7 +17,7 @@ import "dotenv/config";
 import { ethers } from "ethers";
 
 const ABI = [
-  "function depositBonus(string calldata eventId, uint256 fightId, uint256 amount) external",
+  "function depositBonus(string calldata eventId, uint256 fightId, uint256 amount, bool force) external",
 ];
 
 async function main() {
@@ -55,11 +55,13 @@ async function main() {
   const amountBigInt = BigInt(amount);
   if (amountBigInt <= 0n) throw new Error("--amount must be > 0");
 
+  const force = args.force === "true" || args.force === "1";
+
   const booster = new ethers.Contract(contract, ABI, wallet);
   console.log(
-    `Depositing bonus: ${amountBigInt} FP for event: ${eventId}, fightId: ${fightId}`
+    `Depositing bonus: ${amountBigInt} FP for event: ${eventId}, fightId: ${fightId}, force: ${force}`
   );
-  const tx = await booster.depositBonus(eventId, fightId, amountBigInt);
+  const tx = await booster.depositBonus(eventId, fightId, amountBigInt, force);
   console.log("Submitted depositBonus tx:", tx.hash);
   const rcpt = await tx.wait();
   console.log("Mined in block", rcpt.blockNumber);
