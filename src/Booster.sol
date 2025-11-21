@@ -218,6 +218,7 @@ contract Booster is
     function setFP(address newFP) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newFP != address(0), "fp=0");
         address oldFP = address(FP);
+        if (oldFP == newFP) return;
         FP = FP1155(newFP);
         emit FPUpdated(oldFP, newFP);
     }
@@ -270,7 +271,7 @@ contract Booster is
 
         // Validate defaultBoostCutoff if provided
         if (defaultBoostCutoff > 0) {
-            require(block.timestamp < defaultBoostCutoff, "boost cutoff must be in the future");
+            require(block.timestamp <= defaultBoostCutoff, "boost cutoff must be in the future");
         }
 
         // Initialize all fights as OPEN (fightIds are 1, 2, 3, ..., numFights) and set boost cutoff if provided
