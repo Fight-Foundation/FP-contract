@@ -1,48 +1,50 @@
 /**
  * @notice Script to deposit bonus FP tokens to a fight's prize pool
  *
+ * @example Using testnet
+ * ts-node tools/booster/deposit-bonus.ts --network testnet --eventId UFC_300 --fightId 1 --amount 5000000000000000000
+ *
+ * @example Using mainnet
+ * ts-node tools/booster/deposit-bonus.ts --network mainnet --eventId UFC_300 --fightId 1 --amount 5000000000000000000
+ *
  * @example Deposit 5 FP (5e18 wei) as bonus for fight 1
- * ts-node tools/booster/deposit-bonus.ts --eventId UFC_300 --fightId 1 --amount 5000000000000000000
+ * ts-node tools/booster/deposit-bonus.ts --network testnet --eventId UFC_300 --fightId 1 --amount 5000000000000000000
  *
  * @example Deposit 10 FP for fight 3
- * ts-node tools/booster/deposit-bonus.ts --eventId UFC_300 --fightId 3 --amount 10000000000000000000
+ * ts-node tools/booster/deposit-bonus.ts --network testnet --eventId UFC_300 --fightId 3 --amount 10000000000000000000
  *
  * @example Using alternative parameter names
- * ts-node tools/booster/deposit-bonus.ts --event UFC_300 --fight 1 --amount 5000000000000000000
+ * ts-node tools/booster/deposit-bonus.ts --network testnet --event UFC_300 --fight 1 --amount 5000000000000000000
  *
  * @example With custom contract address
  * ts-node tools/booster/deposit-bonus.ts --contract 0x123... --eventId UFC_300 --fightId 1 --amount 5000000000000000000
+ *
+ * @example Skip confirmation prompt
+ * ts-node tools/booster/deposit-bonus.ts --network testnet --eventId UFC_300 --fightId 1 --amount 5000000000000000000 --yes
+ *
+ * @env MAINNET_BSC_EXPLORER_URL - Block explorer URL for BSC Mainnet (default: https://bscscan.com)
+ * @env TESTNET_BSC_EXPLORER_URL - Block explorer URL for BSC Testnet (default: https://testnet.bscscan.com)
  */
 import "dotenv/config";
 import { ethers } from "ethers";
+import {
+  parseArgs,
+  setupBoosterConfig,
+  displayTransactionSummary,
+  requestConfirmation,
+  waitForTransaction,
+} from "./booster.utils";
 
 const ABI = [
-  "function depositBonus(string calldata eventId, uint256 fightId, uint256 amount, bool force) external",
+  "function depositBonus(string calldata eventId, uint256 fightId, uint256 amount) external",
 ];
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const rpcUrl =
-    args.rpc ||
-    process.env.RPC_URL ||
-    process.env.BSC_TESTNET_RPC_URL ||
-    process.env.BSC_RPC_URL;
-  if (!rpcUrl)
-    throw new Error(
-      "Missing RPC URL (set --rpc or RPC_URL/BSC_TESTNET_RPC_URL/BSC_RPC_URL)"
-    );
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const config = await setupBoosterConfig(args);
 
-  const pk = process.env.OPERATOR_PK || process.env.PRIVATE_KEY;
-  if (!pk) throw new Error("Missing OPERATOR_PK (or PRIVATE_KEY) in .env");
-  const wallet = new ethers.Wallet(
-    pk.startsWith("0x") ? pk : "0x" + pk,
-    provider
-  );
-
-  const contract = args.contract || process.env.BOOSTER_ADDRESS;
-  if (!contract)
-    throw new Error("Missing contract (set --contract or BOOSTER_ADDRESS)");
+  // Log network mode for clarity
+  console.log(`Network mode: ${config.networkMode.toUpperCase()}`);
 
   const eventId = args.eventId || args.event;
   if (!eventId) throw new Error("Missing --eventId (or --event)");
@@ -55,30 +57,24 @@ async function main() {
   const amountBigInt = BigInt(amount);
   if (amountBigInt <= 0n) throw new Error("--amount must be > 0");
 
-  const force = args.force === "true" || args.force === "1";
+  const booster = new ethers.Contract(config.contractAddress, ABI, config.wallet);
 
-  const booster = new ethers.Contract(contract, ABI, wallet);
-  console.log(
-    `Depositing bonus: ${amountBigInt} FP for event: ${eventId}, fightId: ${fightId}, force: ${force}`
-  );
-  const tx = await booster.depositBonus(eventId, fightId, amountBigInt, force);
-  console.log("Submitted depositBonus tx:", tx.hash);
-  const rcpt = await tx.wait();
-  console.log("Mined in block", rcpt.blockNumber);
-}
+  // Format amount for display (convert from wei to FP)
+  const amountInFP = ethers.formatEther(amountBigInt);
 
-function parseArgs(argv: string[]) {
-  const out: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a.startsWith("--")) {
-      const key = a.slice(2);
-      const val = argv[i + 1];
-      out[key] = val;
-      i++;
-    }
-  }
-  return out;
+  // Display transaction summary
+  displayTransactionSummary(config, [
+    `Event ID: ${eventId}`,
+    `Fight ID: ${fightId}`,
+    `Amount: ${amountInFP} FP (${amountBigInt} wei)`,
+  ], "depositBonus");
+
+  // Request confirmation
+  await requestConfirmation(args);
+
+  console.log("\n🚀 Executing transaction...");
+  const tx = await booster.depositBonus(eventId, fightId, amountBigInt);
+  await waitForTransaction(tx, config.chainId);
 }
 
 main().catch((err) => {

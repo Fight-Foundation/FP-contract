@@ -1,0 +1,34 @@
+{
+  "name": "booster-playground",
+  "version": "1.0.0",
+  "description": "Booster playground - Tools for testing Booster contract on testnet - Portable with embedded ABI",
+  "main": "src/booster-client.ts",
+  "scripts": {
+    "example": "ts-node src/example.ts",
+    "create-event": "ts-node src/create-event.ts",
+    "deposit-bonus": "ts-node src/deposit-bonus.ts",
+    "submit-result": "ts-node src/submit-result.ts",
+    "set-cutoff": "ts-node src/set-cutoff.ts",
+    "read-event": "ts-node src/read-event.ts",
+    "place-boost": "ts-node src/place-boost.ts",
+    "check-claimable": "ts-node src/check-claimable.ts",
+    "claim": "ts-node src/claim.ts",
+    "set-claim-ready": "ts-node src/set-claim-ready.ts",
+    "get-event": "ts-node src/get-event.ts",
+    "build": "tsc"
+  },
+  "keywords": [
+    "qa",
+    "booster",
+    "testnet"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -12,6 +12,9 @@
  *
  * @example With default boost cutoff
  * ts-node tools/booster/create-event.ts --eventId 322 --numFights 10 --seasonId 322 --defaultBoostCutoff 1234567890
+ *
+ * @example With network parameter
+ * ts-node tools/booster/create-event.ts --network testnet --eventId 322 --numFights 10 --seasonId 322
  */
 import "dotenv/config";
 import { ethers } from "ethers";
@@ -33,16 +36,30 @@ async function main() {
     );
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
-  const pk = process.env.OPERATOR_PK || process.env.PRIVATE_KEY;
-  if (!pk) throw new Error("Missing OPERATOR_PK (or PRIVATE_KEY) in .env");
+  const pk = process.env.OPERATOR_PK;
+  if (!pk) throw new Error("Missing OPERATOR_PK in .env");
   const wallet = new ethers.Wallet(
     pk.startsWith("0x") ? pk : "0x" + pk,
     provider
   );
 
-  const contract = args.contract || process.env.BOOSTER_ADDRESS;
-  if (!contract)
-    throw new Error("Missing contract (set --contract or BOOSTER_ADDRESS)");
+  const networkName = (args.network || args.net || "").toLowerCase();
+  const contract =
+    args.contract ||
+    (networkName === "testnet"
+      ? process.env.TESTNET_BOOSTER_ADDRESS || process.env.BOOSTER_ADDRESS
+      : networkName === "mainnet"
+      ? process.env.MAINNET_BOOSTER_ADDRESS || process.env.BOOSTER_ADDRESS
+      : process.env.BOOSTER_ADDRESS);
+  if (!contract) {
+    const envVar =
+      networkName === "testnet"
+        ? "TESTNET_BOOSTER_ADDRESS"
+        : networkName === "mainnet"
+        ? "MAINNET_BOOSTER_ADDRESS"
+        : "BOOSTER_ADDRESS";
+    throw new Error(`Missing contract (set --contract or ${envVar} in .env)`);
+  }
 
   const eventId = args.eventId || args.event;
   if (!eventId) throw new Error("Missing --eventId (or --event)");
