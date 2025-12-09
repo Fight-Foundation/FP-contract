@@ -1000,9 +1000,13 @@ contract Booster is
         require(pointsForWinner > 0, "points for winner must be > 0");
         require(pointsForWinnerMethod >= pointsForWinner, "method points must be >= winner points");
 
-        // Validate winner/method consistency
+        Fight storage fight = fights[eventId][fightId];
+        
+        // Validate winner/method consistency and set cancelled flag
         if (winner == Corner.NONE) {
             require(method == WinMethod.NO_CONTEST, "NONE winner requires NO_CONTEST method");
+            // Set cancelled flag for no-contest results (allows overwriting cancelled fights)
+            fight.cancelled = true;
         } else {
             // if there are winners, sumWinnersStakes and winningPoolTotalShares must be > 0
             if (sumWinnersStakes > 0) {
@@ -1011,10 +1015,10 @@ contract Booster is
             if (winningPoolTotalShares > 0) {
                 require(sumWinnersStakes > 0, "sumWinnersStakes must be > 0 if winningPoolTotalShares > 0");
             }
+            // Clear cancelled flag for valid results (allows reverting cancellations)
+            fight.cancelled = false;
         }
-
-        Fight storage fight = fights[eventId][fightId];
-        require(!fight.cancelled, "fight cancelled");
+        
         // If there are winners, they must be a subset of all users who placed boosts
         if (sumWinnersStakes > 0) {
             require(sumWinnersStakes <= fight.originalPool, "sumWinnersStakes exceeds originalPool");
@@ -1028,13 +1032,6 @@ contract Booster is
         fight.pointsForWinnerMethod = pointsForWinnerMethod;
         fight.sumWinnersStakes = sumWinnersStakes;
         fight.winningPoolTotalShares = winningPoolTotalShares;
-
-        // Auto-set cancelled flag for no-contest outcomes to enable refunds
-        // This ensures consistent behavior whether cancelFight() or submitFightResult()
-        // is used to declare a no-contest
-        if (winner == Corner.NONE) {
-            fight.cancelled = true;
-        }
 
         emit FightResultSubmitted(
             eventId,

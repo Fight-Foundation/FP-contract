@@ -18,11 +18,11 @@ async function main() {
   const rpcUrl =
     args.rpc ||
     process.env.RPC_URL ||
-    process.env.BSC_TESTNET_RPC_URL ||
+    process.env.TESTNET_BSC_RPC_URL ||
     process.env.BSC_RPC_URL;
   if (!rpcUrl)
     throw new Error(
-      "Missing RPC URL (set --rpc or RPC_URL/BSC_TESTNET_RPC_URL/BSC_RPC_URL)"
+      "Missing RPC URL (set --rpc or RPC_URL/TESTNET_BSC_RPC_URL/BSC_RPC_URL)"
     );
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
@@ -101,6 +101,9 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+
+
 
 
 

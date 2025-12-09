@@ -17,7 +17,7 @@ import boosterAbi from "./booster-abi.json";
  * Gets a Booster contract instance connected to testnet
  */
 export async function getBooster(): Promise<ethers.Contract> {
-  const rpcUrl = process.env.BSC_TESTNET_RPC_URL;
+  const rpcUrl = process.env.TESTNET_BSC_RPC_URL;
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
   const pk = process.env.PRIVATE_KEY_OPERATOR || process.env.OPERATOR_PK;
@@ -43,7 +43,7 @@ export async function getBooster(): Promise<ethers.Contract> {
  * Gets only the provider (without wallet) for read-only calls
  */
 export function getProvider(): ethers.JsonRpcProvider {
-  const rpcUrl = process.env.BSC_TESTNET_RPC_URL;
+  const rpcUrl = process.env.TESTNET_BSC_RPC_URL;
   return new ethers.JsonRpcProvider(rpcUrl);
 }
 

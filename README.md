@@ -133,7 +133,7 @@ const signature = await serverSigner.signTypedData(domain, types, message);
 
 CLI (Node):
 ```bash
-# .env must include CLAIM_SIGNER_PK and RPC_URL (or BSC_TESTNET_RPC_URL/BSC_RPC_URL)
+# .env must include CLAIM_SIGNER_PK and RPC_URL (or TESTNET_BSC_RPC_URL/BSC_RPC_URL)
 npm run sign:claim -- \
 	--contract $FP1155_ADDRESS \
 	--user $USER_ADDRESS \
@@ -149,12 +149,12 @@ npm run sign:claim -- \
 ```bash
 cast send $FP1155_ADDRESS "claim(uint256,uint256,uint256,bytes)" \
 	$SEASON_ID $AMOUNT $DEADLINE $SIGNATURE_HEX \
-	--rpc-url "$BSC_TESTNET_RPC_URL" --private-key "$USER_PK"
+	--rpc-url "$TESTNET_BSC_RPC_URL" --private-key "$USER_PK"
 ```
 
 CLI (Node):
 ```bash
-# .env must include USER_PK and RPC_URL (or BSC_TESTNET_RPC_URL/BSC_RPC_URL)
+# .env must include USER_PK and RPC_URL (or TESTNET_BSC_RPC_URL/BSC_RPC_URL)
 npm run submit:claim -- \
 	--contract $FP1155_ADDRESS \
 	--season 2501 \
@@ -267,7 +267,7 @@ Emergency response tips:
 - .env with:
 	- `PRIVATE_KEY` — deployer private key (hex, no 0x or with 0x both supported by Foundry)
 	- `BSC_RPC_URL` — BSC mainnet RPC (optional)
-	- `BSC_TESTNET_RPC_URL` — BSC testnet RPC
+	- `TESTNET_BSC_RPC_URL` — BSC testnet RPC
 	- `ADMIN` — optional admin address for constructor (defaults to deployer)
 	- `BASE_URI` — optional base metadata URI (default `ipfs://base/{id}.json`)
 	- `BSCSCAN_API_KEY` — optional, for contract verification
@@ -298,7 +298,7 @@ forge fmt
 Testnet (BSC testnet):
 ```bash
 forge script script/DeployUpgradeable.s.sol:DeployUpgradeable \
-	--rpc-url "$BSC_TESTNET_RPC_URL" \
+	--rpc-url "$TESTNET_BSC_RPC_URL" \
 	--broadcast --verify \
 	-vvvv
 ```
@@ -340,7 +340,7 @@ For testing or non-production use, you can deploy without a proxy:
 
 ```bash
 forge script script/Deploy.s.sol:Deploy \
-	--rpc-url "$BSC_TESTNET_RPC_URL" \
+	--rpc-url "$TESTNET_BSC_RPC_URL" \
 	--broadcast --verify \
 	-vvvv
 ```

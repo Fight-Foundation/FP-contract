@@ -9,7 +9,7 @@ Portable project to interact directly with the Booster contract on testnet. Incl
    ```bash
    PRIVATE_KEY=0x...your_private_key
    TESTNET_BOOSTER_ADDRESS=0xdcA538E7385dc39888f8934D7D3e9E6beE2E8DEf
-   BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
+   TESTNET_BSC_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
    ```
 
 **Note:** The `.env` must be in the root of the main project because the client looks for environment variables from there.

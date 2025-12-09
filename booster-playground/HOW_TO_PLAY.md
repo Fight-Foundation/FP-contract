@@ -6,7 +6,7 @@ This guide describes how to use the Booster contract from creating events to cla
 
 1. Configure environment variables in `.env`:
    ```env
-   BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
+   TESTNET_BSC_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
    TESTNET_BOOSTER_ADDRESS=0x...
    TESTNET_FP1155_ADDRESS=0x...
    

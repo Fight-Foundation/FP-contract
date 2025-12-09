@@ -1,15 +1,16 @@
 /**
- * @notice Script to mint FP tokens
+ * @notice Script to grant CLAIM_SIGNER_ROLE to an address in the FP1155 contract
  *
- * @example Mint 1M tokens to an address
- * ts-node tools/fp/mint.ts --network testnet --to 0xc312F7E46C0f14AE2931D922Af9484eD8868d12c --seasonId 323 --amount 1000000
+ * @example Grant role to claim signer
+ * ts-node tools/fp/grant-claim-signer-role.ts --network testnet --to 0x76C0BC9b0322E971D5A98F8f64e103715462C0A9
  */
 import "dotenv/config";
 import { ethers } from "ethers";
 
 const ABI = [
-  "function mint(address to, uint256 seasonId, uint256 amount, bytes memory data) external",
-  "function balanceOf(address account, uint256 id) external view returns (uint256)",
+  "function grantRole(bytes32 role, address account) external",
+  "function hasRole(bytes32 role, address account) external view returns (bool)",
+  "function CLAIM_SIGNER_ROLE() external pure returns (bytes32)",
 ];
 
 async function main() {
@@ -54,33 +55,32 @@ async function main() {
   if (!toAddress) throw new Error("Missing --to (or --address)");
   if (!ethers.isAddress(toAddress)) throw new Error("Invalid address format");
 
-  const seasonId = BigInt(args.seasonId ?? args.season ?? 0);
-  if (seasonId < 0n) throw new Error("--seasonId (or --season) must be >= 0");
-
-  const amount = BigInt(args.amount ?? 0);
-  if (amount <= 0n) throw new Error("--amount must be > 0");
-
   const fp1155 = new ethers.Contract(contract, ABI, wallet);
 
-  console.log(`Minting ${amount} FP tokens (season ${seasonId})`);
-  console.log(`To: ${toAddress}`);
-  console.log(`Contract: ${contract}`);
-  console.log(`From wallet: ${wallet.address}\n`);
+  // Get the role hash
+  const CLAIM_SIGNER_ROLE = await fp1155.CLAIM_SIGNER_ROLE();
+  console.log(`CLAIM_SIGNER_ROLE: ${CLAIM_SIGNER_ROLE}`);
 
-  // Check current balance
-  const balance = await fp1155.balanceOf(toAddress, seasonId);
-  console.log(`Current balance: ${balance.toString()}`);
+  // Check if already has role
+  const hasRole = await fp1155.hasRole(CLAIM_SIGNER_ROLE, toAddress);
+  if (hasRole) {
+    console.log(`✓ Address ${toAddress} already has CLAIM_SIGNER_ROLE`);
+    return;
+  }
 
-  console.log(`\nSending mint transaction...`);
-  const tx = await fp1155.mint(toAddress, seasonId, amount, "0x");
-  console.log("Submitted mint tx:", tx.hash);
+  console.log(`Granting CLAIM_SIGNER_ROLE to ${toAddress}...`);
+  const tx = await fp1155.grantRole(CLAIM_SIGNER_ROLE, toAddress);
+  console.log("Submitted grantRole tx:", tx.hash);
   const rcpt = await tx.wait();
   console.log("Mined in block", rcpt.blockNumber);
 
-  // Verify new balance
-  const newBalance = await fp1155.balanceOf(toAddress, seasonId);
-  console.log(`\n✓ Mint complete!`);
-  console.log(`New balance: ${newBalance.toString()}`);
+  // Verify
+  const nowHasRole = await fp1155.hasRole(CLAIM_SIGNER_ROLE, toAddress);
+  if (nowHasRole) {
+    console.log(`✓ Successfully granted CLAIM_SIGNER_ROLE to ${toAddress}`);
+  } else {
+    console.log(`✗ Warning: Role grant may have failed (check transaction)`);
+  }
 }
 
 function parseArgs(argv: string[]) {
@@ -101,4 +101,6 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+
 

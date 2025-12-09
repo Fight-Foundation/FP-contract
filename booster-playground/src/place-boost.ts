@@ -74,7 +74,7 @@ async function main() {
     process.exit(1);
   }
 
-  const rpcUrl = process.env.BSC_TESTNET_RPC_URL || DEFAULT_RPC;
+  const rpcUrl = process.env.TESTNET_BSC_RPC_URL || DEFAULT_RPC;
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
   // Create wallet (user or operator)

@@ -29,10 +29,10 @@ async function main() {
     if (networkName === "mainnet") {
       rpcUrl = process.env.BSC_RPC_URL || process.env.MAINNET_BSC_RPC_URL || process.env.RPC_URL || undefined;
     } else if (networkName === "testnet") {
-      rpcUrl = process.env.BSC_TESTNET_RPC_URL || process.env.RPC_URL || undefined;
+      rpcUrl = process.env.TESTNET_BSC_RPC_URL || process.env.RPC_URL || undefined;
     } else {
       // Default fallback
-      rpcUrl = process.env.RPC_URL || process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL || undefined;
+      rpcUrl = process.env.RPC_URL || process.env.BSC_RPC_URL || process.env.TESTNET_BSC_RPC_URL || undefined;
     }
   }
   
@@ -40,8 +40,8 @@ async function main() {
     const envVar = networkName === "mainnet" 
       ? "BSC_RPC_URL or MAINNET_BSC_RPC_URL"
       : networkName === "testnet"
-      ? "BSC_TESTNET_RPC_URL"
-      : "RPC_URL, BSC_RPC_URL, or BSC_TESTNET_RPC_URL";
+      ? "TESTNET_BSC_RPC_URL"
+      : "RPC_URL, BSC_RPC_URL, or TESTNET_BSC_RPC_URL";
     throw new Error(`Missing RPC URL for ${networkName || "default"} network (set --rpc or ${envVar} in .env)`);
   }
   
