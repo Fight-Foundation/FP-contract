@@ -498,6 +498,76 @@ contract FP1155Test is Test {
         fp.claim(S1, 2, deadline, sig);
     }
 
+    function testBurnEventEmitted() public {
+        // Mint tokens to alice first
+        _mintToAlice(S1, 10);
+        // Expect Burn event with correct parameters
+        vm.expectEmit(true, true, false, true);
+        emit FP1155.Burn(alice, S1, 5);
+        vm.prank(alice);
+        fp.burn(alice, S1, 5);
+        // Verify balance was reduced
+        assertEq(fp.balanceOf(alice, S1), 5);
+    }
+
+    function testBurnBatchEventEmitted() public {
+        // Mint tokens to alice first
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = S1;
+        ids[1] = S1 + 1;
+        uint256[] memory amts = new uint256[](2);
+        amts[0] = 10;
+        amts[1] = 20;
+        vm.prank(minter);
+        fp.mintBatch(alice, ids, amts, "");
+        // Expect BurnBatch event with correct parameters
+        vm.expectEmit(true, false, false, true);
+        emit FP1155.BurnBatch(alice, ids, amts);
+        vm.prank(alice);
+        fp.burnBatch(alice, ids, amts);
+        // Verify balances were reduced
+        assertEq(fp.balanceOf(alice, ids[0]), 0);
+        assertEq(fp.balanceOf(alice, ids[1]), 0);
+    }
+
+    function testBurnEventEmittedWhenSeasonLocked() public {
+        // Mint tokens to alice
+        _mintToAlice(S1, 10);
+        // Lock the season
+        vm.prank(admin);
+        fp.setSeasonStatus(S1, FP1155.SeasonStatus.LOCKED);
+        // Burn should still emit event even when season is locked
+        vm.expectEmit(true, true, false, true);
+        emit FP1155.Burn(alice, S1, 3);
+        vm.prank(alice);
+        fp.burn(alice, S1, 3);
+        assertEq(fp.balanceOf(alice, S1), 7);
+    }
+
+    function testBurnBatchEventEmittedWhenSeasonLocked() public {
+        // Mint tokens to alice
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = S1;
+        ids[1] = S1 + 1;
+        uint256[] memory amts = new uint256[](2);
+        amts[0] = 5;
+        amts[1] = 7;
+        vm.prank(minter);
+        fp.mintBatch(alice, ids, amts, "");
+        // Lock both seasons
+        vm.prank(admin);
+        fp.setSeasonStatus(ids[0], FP1155.SeasonStatus.LOCKED);
+        vm.prank(admin);
+        fp.setSeasonStatus(ids[1], FP1155.SeasonStatus.LOCKED);
+        // BurnBatch should still emit event even when seasons are locked
+        vm.expectEmit(true, false, false, true);
+        emit FP1155.BurnBatch(alice, ids, amts);
+        vm.prank(alice);
+        fp.burnBatch(alice, ids, amts);
+        assertEq(fp.balanceOf(alice, ids[0]), 0);
+        assertEq(fp.balanceOf(alice, ids[1]), 0);
+    }
+
     function testZeroAmountRevertsClaimMintAndMintBatch() public {
         // claim amount=0
         uint256 deadline = block.timestamp + 1 days;
