@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {SimpleStaking} from "src/SimpleStaking.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { SimpleStaking } from "src/SimpleStaking.sol";
 
 /**
  * @title DeploySimpleStaking
@@ -14,7 +14,7 @@ import {SimpleStaking} from "src/SimpleStaking.sol";
  *   UPDATER_ADDRESS     - updater address for stakeBehalf (optional; defaults to deployer)
  *   START_TIME          - start time for staking in unix timestamp (optional; defaults to now + 1 hour)
  *   TESTNET_RPC_URL     - RPC URL for testnet (use with --rpc-url $TESTNET_RPC_URL)
- * 
+ *
  * @dev Usage:
  *   forge script script/DeploySimpleStaking.s.sol:DeploySimpleStaking \
  *     --rpc-url $TESTNET_RPC_URL \
@@ -27,12 +27,12 @@ contract DeploySimpleStaking is Script {
         address fightTokenAddr = vm.envAddress("FIGHT_TOKEN_ADDRESS");
         address ownerEnv = vm.envOr("OWNER_ADDRESS", address(0));
         address updaterEnv = vm.envOr("UPDATER_ADDRESS", address(0));
-        
+
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(pk);
         address owner = ownerEnv == address(0) ? deployer : ownerEnv;
         address updater = updaterEnv == address(0) ? deployer : updaterEnv;
-        
+
         // Default start time: 1 hour from now, or use env variable
         uint256 startTime = vm.envOr("START_TIME", uint256(block.timestamp + 1 hours));
 
@@ -55,12 +55,4 @@ contract DeploySimpleStaking is Script {
         vm.stopBroadcast();
     }
 }
-
-
-
-
-
-
-
-
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {FIGHT} from "../test/mocks/FIGHT.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { FIGHT } from "../test/mocks/FIGHT.sol";
 
 /**
  * @title DeployFight
@@ -11,7 +11,7 @@ import {FIGHT} from "../test/mocks/FIGHT.sol";
  *   PRIVATE_KEY         - deployer key
  *   OWNER_ADDRESS       - owner address (optional; defaults to deployer)
  *   TESTNET_RPC_URL     - RPC URL for testnet (use with --rpc-url $TESTNET_RPC_URL)
- * 
+ *
  * @dev Usage:
  *   forge script script/DeployFight.s.sol:DeployFight \
  *     --rpc-url $TESTNET_RPC_URL \
@@ -22,10 +22,10 @@ import {FIGHT} from "../test/mocks/FIGHT.sol";
 contract DeployFight is Script {
     // Wallet address to receive 3M tokens
     address constant RECIPIENT_WALLET = 0xF362Fe668d93c43Be16716A73702333795Fbcea6;
-    
+
     // Total supply to mint: 21M tokens
     uint256 constant TOTAL_SUPPLY = 21_000_000 * 1e18;
-    
+
     // Amount to transfer to recipient: 3M tokens
     uint256 constant TRANSFER_AMOUNT = 3_000_000 * 1e18;
 

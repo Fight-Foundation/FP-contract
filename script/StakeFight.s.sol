@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {SimpleStaking} from "src/SimpleStaking.sol";
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { SimpleStaking } from "src/SimpleStaking.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title StakeFight
@@ -13,7 +13,7 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  *   STAKING_ADDRESS       - address of SimpleStaking contract (required)
  *   STAKE_AMOUNT          - amount to stake in tokens (optional; defaults to 100)
  *   TESTNET_RPC_URL       - RPC URL for testnet (use with --rpc-url $TESTNET_RPC_URL)
- * 
+ *
  * @dev Usage:
  *   forge script script/StakeFight.s.sol:StakeFight \
  *     --rpc-url $TESTNET_RPC_URL \
@@ -28,7 +28,7 @@ contract StakeFight is Script {
         uint256 userPk = vm.envUint("USER_PK");
         address stakingAddr = vm.envAddress("STAKING_ADDRESS");
         uint256 stakeAmount = vm.envOr("STAKE_AMOUNT", DEFAULT_STAKE_AMOUNT);
-        
+
         address user = vm.addr(userPk);
         SimpleStaking staking = SimpleStaking(stakingAddr);
         address fightTokenAddr = staking.getFightToken();
@@ -83,12 +83,4 @@ contract StakeFight is Script {
         vm.stopBroadcast();
     }
 }
-
-
-
-
-
-
-
-
 

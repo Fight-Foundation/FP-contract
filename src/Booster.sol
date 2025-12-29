@@ -1001,7 +1001,7 @@ contract Booster is
         require(pointsForWinnerMethod >= pointsForWinner, "method points must be >= winner points");
 
         Fight storage fight = fights[eventId][fightId];
-        
+
         // Validate winner/method consistency and set cancelled flag
         if (winner == Corner.NONE) {
             require(method == WinMethod.NO_CONTEST, "NONE winner requires NO_CONTEST method");
@@ -1018,7 +1018,7 @@ contract Booster is
             // Clear cancelled flag for valid results (allows reverting cancellations)
             fight.cancelled = false;
         }
-        
+
         // If there are winners, they must be a subset of all users who placed boosts
         if (sumWinnersStakes > 0) {
             require(sumWinnersStakes <= fight.originalPool, "sumWinnersStakes exceeds originalPool");
