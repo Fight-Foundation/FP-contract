@@ -48,7 +48,7 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
   const pk = process.env.USER_PK;
-  if (!pk) throw new Error("Missing USER_PK (or PRIVATE_KEY) in .env");
+  if (!pk) throw new Error("Missing USER_PK in .env");
   const wallet = new ethers.Wallet(
     pk.startsWith("0x") ? pk : "0x" + pk,
     provider
