@@ -54,6 +54,9 @@ contract DailyLotteryTest is Test {
     event DefaultsUpdated(
         uint256 seasonId, uint256 entryPrice, uint256 maxEntriesPerUser, uint256 maxFreeEntriesPerUser
     );
+    event RoundParametersUpdated(
+        uint256 indexed dayId, uint256 entryPrice, uint256 maxEntriesPerUser, uint256 maxFreeEntriesPerUser
+    );
 
     function setUp() public {
         // Set realistic timestamp (January 1, 2024)
@@ -925,6 +928,131 @@ contract DailyLotteryTest is Test {
         vm.prank(user1);
         vm.expectRevert();
         lottery.unpause();
+    }
+
+    // ============ Update Round Parameters Tests ============
+
+    function test_UpdateRoundParameters() public {
+        uint256 dayId = block.timestamp / 1 days;
+
+        // Create round by claiming entry
+        uint256 nonce = lottery.getUserNonce(dayId, user1);
+        bytes memory sig = _signFreeEntry(user1, dayId, nonce);
+        vm.prank(user1);
+        lottery.claimFreeEntry(sig);
+
+        // Buy entry with original price (1 FP)
+        uint256 balanceBeforeUpdate = fpToken.balanceOf(user1, SEASON_ID);
+        vm.prank(user1);
+        lottery.buyEntry();
+        uint256 balanceAfterUpdate = fpToken.balanceOf(user1, SEASON_ID);
+        assertEq(balanceBeforeUpdate - balanceAfterUpdate, 1, "Should burn 1 FP with original price");
+
+        // Verify user has 2 entries now
+        assertEq(lottery.getUserEntries(dayId, user1), 2, "User should have 2 entries");
+
+        // Update round parameters
+        uint256 newEntryPrice = 3;
+        uint256 newMaxEntriesPerUser = 10;
+        uint256 newMaxFreeEntriesPerUser = 3;
+
+        vm.prank(admin);
+        vm.expectEmit(true, true, true, true);
+        emit RoundParametersUpdated(dayId, newEntryPrice, newMaxEntriesPerUser, newMaxFreeEntriesPerUser);
+        lottery.updateRoundParameters(dayId, newEntryPrice, newMaxEntriesPerUser, newMaxFreeEntriesPerUser);
+
+        // Verify parameters were updated
+        DailyLottery.LotteryRound memory round = lottery.getLotteryRound(dayId);
+        assertEq(round.entryPrice, newEntryPrice, "Entry price should be updated");
+        assertEq(round.maxEntriesPerUser, newMaxEntriesPerUser, "Max entries should be updated");
+        assertEq(round.maxFreeEntriesPerUser, newMaxFreeEntriesPerUser, "Max free entries should be updated");
+
+        // Buy another entry with new price (3 FP)
+        uint256 balanceBeforeNewPrice = fpToken.balanceOf(user1, SEASON_ID);
+        vm.prank(user1);
+        lottery.buyEntry();
+        uint256 balanceAfterNewPrice = fpToken.balanceOf(user1, SEASON_ID);
+        assertEq(balanceBeforeNewPrice - balanceAfterNewPrice, 3, "Should burn 3 FP with new price");
+
+        // Verify user has 3 entries total
+        assertEq(lottery.getUserEntries(dayId, user1), 3, "User should have 3 entries total");
+        assertEq(lottery.getTotalEntries(dayId), 3, "Total entries should be 3");
+
+        // Verify total paid reflects both prices: 1 (old) + 3 (new) = 4 FP
+        round = lottery.getLotteryRound(dayId);
+        assertEq(round.totalPaid, 4, "Total paid should be 4 FP (1 + 3)");
+    }
+
+    function test_UpdateRoundParameters_RevertNonExistentRound() public {
+        uint256 futureDayId = (block.timestamp / 1 days) + 10; // Future day
+
+        vm.prank(admin);
+        vm.expectRevert("Round does not exist");
+        lottery.updateRoundParameters(futureDayId, 2, 8, 2);
+    }
+
+    function test_UpdateRoundParameters_RevertFinalizedRound() public {
+        uint256 dayId = block.timestamp / 1 days;
+
+        // Create round and finalize it
+        setupThreeUsersWithEntries();
+
+        DailyLottery.PrizeData memory prize = DailyLottery.PrizeData({
+            prizeType: DailyLottery.PrizeType.FP, tokenAddress: address(0), seasonId: SEASON_ID, amount: PRIZE_AMOUNT_FP
+        });
+
+        vm.prank(admin);
+        lottery.drawWinner(dayId, 0, prize);
+
+        // Try to update finalized round
+        vm.prank(admin);
+        vm.expectRevert("Cannot update finalized round");
+        lottery.updateRoundParameters(dayId, 2, 8, 2);
+    }
+
+    function test_UpdateRoundParameters_RevertInvalidParameters() public {
+        uint256 dayId = block.timestamp / 1 days;
+
+        // Create round
+        uint256 nonce = lottery.getUserNonce(dayId, user1);
+        bytes memory sig = _signFreeEntry(user1, dayId, nonce);
+        vm.prank(user1);
+        lottery.claimFreeEntry(sig);
+
+        // Test zero entry price
+        vm.prank(admin);
+        vm.expectRevert("Invalid entry price");
+        lottery.updateRoundParameters(dayId, 0, 5, 1);
+
+        // Test zero max entries
+        vm.prank(admin);
+        vm.expectRevert("Invalid max entries");
+        lottery.updateRoundParameters(dayId, 1, 0, 1);
+
+        // Test zero max free entries
+        vm.prank(admin);
+        vm.expectRevert("Invalid max free entries");
+        lottery.updateRoundParameters(dayId, 1, 5, 0);
+
+        // Test max free exceeds max total
+        vm.prank(admin);
+        vm.expectRevert("Max free exceeds max total");
+        lottery.updateRoundParameters(dayId, 1, 5, 6);
+    }
+
+    function test_UpdateRoundParameters_RevertUnauthorized() public {
+        uint256 dayId = block.timestamp / 1 days;
+
+        // Create round
+        uint256 nonce = lottery.getUserNonce(dayId, user1);
+        bytes memory sig = _signFreeEntry(user1, dayId, nonce);
+        vm.prank(user1);
+        lottery.claimFreeEntry(sig);
+
+        // Try to update with non-admin user
+        vm.prank(user1);
+        vm.expectRevert();
+        lottery.updateRoundParameters(dayId, 2, 8, 2);
     }
 
     function test_DrawWinner_DifferentERC20Tokens() public {

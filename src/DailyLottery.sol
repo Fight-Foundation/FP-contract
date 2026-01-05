@@ -116,6 +116,9 @@ contract DailyLottery is
     event DefaultsUpdated(
         uint256 seasonId, uint256 entryPrice, uint256 maxEntriesPerUser, uint256 maxFreeEntriesPerUser
     );
+    event RoundParametersUpdated(
+        uint256 indexed dayId, uint256 entryPrice, uint256 maxEntriesPerUser, uint256 maxFreeEntriesPerUser
+    );
 
     // ============ Initializer ============
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -196,6 +199,40 @@ contract DailyLottery is
         emit DefaultsUpdated(
             _defaultSeasonId, _defaultEntryPrice, _defaultMaxEntriesPerUser, _defaultMaxFreeEntriesPerUser
         );
+    }
+
+    /**
+     * @notice Update parameters for an existing lottery round
+     * @param dayId Day identifier of the round to update
+     * @param newEntryPrice New entry price in FP tokens
+     * @param newMaxEntriesPerUser New maximum entries per user
+     * @param newMaxFreeEntriesPerUser New maximum free entries per user
+     * @dev Only works for rounds that exist and haven't been finalized yet
+     */
+    function updateRoundParameters(
+        uint256 dayId,
+        uint256 newEntryPrice,
+        uint256 newMaxEntriesPerUser,
+        uint256 newMaxFreeEntriesPerUser
+    ) external onlyRole(LOTTERY_ADMIN_ROLE) {
+        LotteryRound storage round = lotteryRounds[dayId];
+
+        // Validate round exists and is not finalized
+        require(round.dayId == dayId, "Round does not exist");
+        require(!round.finalized, "Cannot update finalized round");
+
+        // Validate new parameters
+        require(newEntryPrice > 0, "Invalid entry price");
+        require(newMaxEntriesPerUser > 0, "Invalid max entries");
+        require(newMaxFreeEntriesPerUser > 0, "Invalid max free entries");
+        require(newMaxFreeEntriesPerUser <= newMaxEntriesPerUser, "Max free exceeds max total");
+
+        // Update parameters
+        round.entryPrice = newEntryPrice;
+        round.maxEntriesPerUser = newMaxEntriesPerUser;
+        round.maxFreeEntriesPerUser = newMaxFreeEntriesPerUser;
+
+        emit RoundParametersUpdated(dayId, newEntryPrice, newMaxEntriesPerUser, newMaxFreeEntriesPerUser);
     }
 
     /**
