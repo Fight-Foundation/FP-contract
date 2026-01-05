@@ -11,35 +11,38 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @title DeployDailyLottery
  * @notice Deployment script for DailyLottery contract with UUPS proxy pattern
- * @dev Usage: forge script script/DeployDailyLottery.s.sol:DeployDailyLottery --rpc-url <RPC_URL> --broadcast --verify
+ * @dev Usage: forge script script/DeployDailyLottery.s.sol:DeployDailyLottery --rpc-url https://bsc-testnet.infura.io/v3/6bb4705a01c54cd9a4715f01b2b73eb6 --broadcast --verify
  */
 contract DeployDailyLottery is Script {
     // Environment variables
     address public fpTokenAddress;
-    address public admin;
+    address public lotteryAdmin;
 
     function setUp() public {
         // Load configuration from environment variables
-        fpTokenAddress = vm.envAddress("FP_TOKEN_ADDRESS");
-        admin = vm.envAddress("ADMIN_ADDRESS");
+        fpTokenAddress = vm.envAddress("FP1155_ADDRESS");
+        lotteryAdmin = vm.envAddress("LOTTERY_ADMIN_ADDRESS");
+        // Note: DEFAULT_ADMIN_ROLE is automatically assigned to deployer (vm.addr(PRIVATE_KEY))
     }
 
     function run() public {
         // Start broadcasting transactions
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address defaultAdmin = vm.addr(deployerPrivateKey); // Deployer gets DEFAULT_ADMIN_ROLE
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("=== Deploying DailyLottery ===");
-        console.log("Deployer:", vm.addr(deployerPrivateKey));
+        console.log("Deployer:", defaultAdmin);
         console.log("FP Token Address:", fpTokenAddress);
-        console.log("Admin Address:", admin);
+        console.log("Default Admin (Deployer):", defaultAdmin);
+        console.log("Lottery Admin:", lotteryAdmin);
 
         // Deploy implementation contract
         DailyLottery implementation = new DailyLottery();
         console.log("Implementation deployed at:", address(implementation));
 
         // Prepare initialization data
-        bytes memory initData = abi.encodeCall(DailyLottery.initialize, (fpTokenAddress, admin));
+        bytes memory initData = abi.encodeCall(DailyLottery.initialize, (fpTokenAddress, defaultAdmin, lotteryAdmin));
 
         // Deploy proxy
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
@@ -77,17 +80,16 @@ contract DeployDailyLottery is Script {
 
 /**
  * @title SetupDailyLottery
- * @notice Setup script to configure roles and initial prize pool after deployment
- * @dev Usage: forge script script/DeployDailyLottery.s.sol:SetupDailyLottery --rpc-url <RPC_URL> --broadcast
+ * @notice Setup script to configure roles after deployment using LOTTERY_ADMIN_ROLE
+ * @dev Usage: forge script script/DeployDailyLottery.s.sol:SetupDailyLottery --rpc-url https://bsc-testnet.infura.io/v3/6bb4705a01c54cd9a4715f01b2b73eb6 --broadcast
+ * @dev Requires LOTTERY_ADMIN_ADDRESS private key in PRIVATE_KEY env var
  */
 contract SetupDailyLottery is Script {
     function run() public {
         // Load addresses
         address lotteryAddress = vm.envAddress("LOTTERY_ADDRESS");
-        address fpTokenAddress = vm.envAddress("FP_TOKEN_ADDRESS");
-        address backendAddress = vm.envAddress("BACKEND_ADDRESS");
-        uint256 fpPrizeAmount = vm.envUint("FP_PRIZE_AMOUNT");
-        uint256 usdtPrizeAmount = vm.envUint("USDT_PRIZE_AMOUNT");
+        address fpTokenAddress = vm.envAddress("FP1155_ADDRESS");
+        address backendAddress = vm.envAddress("LOTTERY_FREE_ENTRY_SIGNER_ADDRESS");
 
         uint256 adminPrivateKey = vm.envUint("PRIVATE_KEY");
         address admin = vm.addr(adminPrivateKey);
@@ -96,9 +98,10 @@ contract SetupDailyLottery is Script {
 
         console.log("=== Setting up DailyLottery ===");
         console.log("Lottery Address:", lotteryAddress);
-        console.log("Admin:", admin);
+        console.log("Lottery Admin:", admin);
+        console.log("FP Token Address:", fpTokenAddress);
+        console.log("Free Entry Signer Address:", backendAddress);
 
-        DailyLottery lottery = DailyLottery(lotteryAddress);
         FP1155 fpToken = FP1155(fpTokenAddress);
 
         // 1. Grant TRANSFER_AGENT_ROLE to lottery in FP1155
@@ -111,61 +114,9 @@ contract SetupDailyLottery is Script {
             console.log("\nLottery already has TRANSFER_AGENT_ROLE");
         }
 
-        // 2. Grant FREE_ENTRY_SIGNER_ROLE to backend
-        bytes32 freeEntrySignerRole = lottery.FREE_ENTRY_SIGNER_ROLE();
-        if (!lottery.hasRole(freeEntrySignerRole, backendAddress)) {
-            console.log("\nGranting FREE_ENTRY_SIGNER_ROLE to backend...");
-            lottery.grantRole(freeEntrySignerRole, backendAddress);
-            console.log("Done");
-        } else {
-            console.log("\nBackend already has FREE_ENTRY_SIGNER_ROLE");
-        }
-
-        // 3. Set approvals for future lottery rounds
-        console.log("\nSetting approvals for FP token...");
-        fpToken.setApprovalForAll(lotteryAddress, true);
-        console.log("FP token approval set");
-
-        console.log("\nNote: Admin must approve each ERC20 prize token before drawing winners");
-        console.log("Example: IERC20(prizeTokenAddress).approve(lotteryAddress, amount)");
-
         vm.stopBroadcast();
 
         console.log("\n=== Setup Complete ===");
-    }
-}
-
-/**
- * @title SetDailyLotteryDefaults
- * @notice Script to set default values for auto-created lottery rounds
- * @dev Usage: forge script script/DeployDailyLottery.s.sol:SetDailyLotteryDefaults --rpc-url <RPC_URL> --broadcast
- */
-contract SetDailyLotteryDefaults is Script {
-    function run() public {
-        address lotteryAddress = vm.envAddress("LOTTERY_ADDRESS");
-        uint256 seasonId = vm.envUint("SEASON_ID");
-        uint256 entryPrice = vm.envOr("ENTRY_PRICE", uint256(1));
-        uint256 maxEntriesPerUser = vm.envOr("MAX_ENTRIES_PER_USER", uint256(5));
-        uint256 maxFreeEntriesPerUser = vm.envOr("MAX_FREE_ENTRIES_PER_USER", uint256(1));
-
-        uint256 adminPrivateKey = vm.envUint("PRIVATE_KEY");
-
-        vm.startBroadcast(adminPrivateKey);
-
-        console.log("=== Setting Lottery Defaults ===");
-        console.log("Lottery Address:", lotteryAddress);
-        console.log("Default Season ID:", seasonId);
-        console.log("Default Entry Price:", entryPrice);
-        console.log("Default Max Entries Per User:", maxEntriesPerUser);
-        console.log("Default Max Free Entries Per User:", maxFreeEntriesPerUser);
-
-        DailyLottery lottery = DailyLottery(lotteryAddress);
-        lottery.setDefaults(seasonId, entryPrice, maxEntriesPerUser, maxFreeEntriesPerUser);
-
-        console.log("\n=== Defaults Updated ===");
-        console.log("New rounds will auto-create with these values when users participate");
-
-        vm.stopBroadcast();
     }
 }
 

@@ -8,7 +8,7 @@ import { DailyLottery } from "src/DailyLottery.sol";
  * @title UpgradeDailyLottery
  * @notice Script to upgrade DailyLottery proxy to a new implementation
  * @dev Usage:
- * LOTTERY_ADDRESS=0x5370abf8009a99ab434f87d46b4718165fc7fa5b forge script script/UpgradeDailyLottery.s.sol:UpgradeDailyLottery --rpc-url "https://bsc-testnet.publicnode.com" --broadcast --with-gas-price 3000000000 -vv
+ * LOTTERY_ADDRESS=0x5370abf8009a99ab434f87d46b4718165fc7fa5b forge script script/UpgradeDailyLottery.s.sol:UpgradeDailyLottery --rpc-url "https://bsc-testnet.publicnode.com" --broadcast --verify --with-gas-price 20000000000 --priority-gas-price 2000000000 -vv
  * Verify:
  *     BSCSCAN_API_KEY=(KEY-VALUE) forge verify-contract 0x9fb696488Bd1Ff578cd5F58D66860e40a300DA20 src/DailyLottery.sol:DailyLottery --chain bsc-testnet
  * Required env vars:

@@ -129,10 +129,11 @@ contract DailyLottery is
     /**
      * @notice Initialize the DailyLottery contract
      * @param _fpToken Address of the FP1155 token contract
-     * @param _admin Address of the admin
+     * @param _defaultAdmin Address that gets DEFAULT_ADMIN_ROLE (deployer)
+     * @param _lotteryAdmin Address that gets LOTTERY_ADMIN_ROLE and FREE_ENTRY_SIGNER_ROLE
      */
-    function initialize(address _fpToken, address _admin) public initializer {
-        require(_fpToken != address(0) && _admin != address(0), "Invalid address");
+    function initialize(address _fpToken, address _defaultAdmin, address _lotteryAdmin) public initializer {
+        require(_fpToken != address(0) && _defaultAdmin != address(0) && _lotteryAdmin != address(0), "Invalid address");
 
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -142,14 +143,14 @@ contract DailyLottery is
 
         fpToken = FP1155(_fpToken);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(LOTTERY_ADMIN_ROLE, _admin);
-        _grantRole(FREE_ENTRY_SIGNER_ROLE, _admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+        _grantRole(LOTTERY_ADMIN_ROLE, _lotteryAdmin);
+        _grantRole(FREE_ENTRY_SIGNER_ROLE, _lotteryAdmin);
 
         // Set default values for auto-created rounds
-        defaultSeasonId = 1;
+        defaultSeasonId = 324001;
         defaultEntryPrice = 1;
-        defaultMaxEntriesPerUser = 5;
+        defaultMaxEntriesPerUser = 10;
         defaultMaxFreeEntriesPerUser = 1;
     }
 
