@@ -33,8 +33,8 @@ function assertAddress(name: string, value: string) {
 }
 
 function checkRpc() {
-  // Accept RPC_URL or BSC_TESTNET_RPC_URL or BSC_RPC_URL
-  const rpc = requireVar('RPC_URL', ['BSC_TESTNET_RPC_URL', 'BSC_RPC_URL']);
+  // Accept RPC_URL or TESTNET_BSC_RPC_URL or BSC_RPC_URL
+  const rpc = requireVar('RPC_URL', ['TESTNET_BSC_RPC_URL', 'BSC_RPC_URL']);
   console.log(`RPC ok: ${rpc.key}`);
 }
 

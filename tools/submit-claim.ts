@@ -7,8 +7,8 @@ const ABI = [
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const rpcUrl = args.rpc || process.env.RPC_URL || process.env.BSC_TESTNET_RPC_URL || process.env.BSC_RPC_URL;
-  if (!rpcUrl) throw new Error('Missing RPC URL (set --rpc or RPC_URL/BSC_TESTNET_RPC_URL/BSC_RPC_URL)');
+  const rpcUrl = args.rpc || process.env.RPC_URL || process.env.TESTNET_BSC_RPC_URL || process.env.BSC_RPC_URL;
+  if (!rpcUrl) throw new Error('Missing RPC URL (set --rpc or RPC_URL/TESTNET_BSC_RPC_URL/BSC_RPC_URL)');
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
   const pk = process.env.USER_PK || process.env.PRIVATE_KEY;

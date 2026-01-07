@@ -217,7 +217,7 @@ export BSCSCAN_API_KEY=...
 **Step 2: Deploy to Testnet (BSC Testnet)**
 ```bash
 forge script script/DeployUpgradeable.s.sol:DeployUpgradeable \
-  --rpc-url "$BSC_TESTNET_RPC_URL" \
+  --rpc-url "$TESTNET_BSC_RPC_URL" \
   --broadcast \
   --verify \
   -vvvv
@@ -322,7 +322,7 @@ cast send 0x5Fa58c84606Eba7000eCaF24C918086B094Db39a \
   --private-key $PRIVATE_KEY
 ```
 
-**For Testnet:** Replace `$BSC_RPC_URL` with `$BSC_TESTNET_RPC_URL`
+**For Testnet:** Replace `$BSC_RPC_URL` with `$TESTNET_BSC_RPC_URL`
 
 ### 2. Configure Transfer Allowlist (if needed)
 
@@ -440,7 +440,7 @@ export ADMIN_ADDRESS=$DEPLOYER
 cast send $DEPLOYER_ADDRESS \
   "deployBooster(address,address)" \
   $FP1155_ADDRESS $ADMIN_ADDRESS \
-  --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY # <— replace with actual deployment method
+  --rpc-url $TESTNET_BSC_RPC_URL --private-key $PRIVATE_KEY # <— replace with actual deployment method
 ```
 
 Then wire roles / allowlist:
@@ -448,16 +448,16 @@ Then wire roles / allowlist:
 # Grant OPERATOR_ROLE
 cast send $BOOSTER_ADDRESS \
   "grantRole(bytes32,address)" $(cast keccak OPERATOR_ROLE) $OPERATOR_ADDRESS \
-  --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
+  --rpc-url $TESTNET_BSC_RPC_URL --private-key $PRIVATE_KEY
 
 # FP1155: grant TRANSFER_AGENT_ROLE to Booster
 cast send $FP1155_ADDRESS \
   "grantRole(bytes32,address)" $(cast keccak TRANSFER_AGENT_ROLE) $BOOSTER_ADDRESS \
-  --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
+  --rpc-url $TESTNET_BSC_RPC_URL --private-key $PRIVATE_KEY
 
 # Allowlist Booster + operator
-cast send $FP1155_ADDRESS "setTransferAllowlist(address,bool)" $BOOSTER_ADDRESS true --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
-cast send $FP1155_ADDRESS "setTransferAllowlist(address,bool)" $OPERATOR_ADDRESS true --rpc-url $BSC_TESTNET_RPC_URL --private-key $PRIVATE_KEY
+cast send $FP1155_ADDRESS "setTransferAllowlist(address,bool)" $BOOSTER_ADDRESS true --rpc-url $TESTNET_BSC_RPC_URL --private-key $PRIVATE_KEY
+cast send $FP1155_ADDRESS "setTransferAllowlist(address,bool)" $OPERATOR_ADDRESS true --rpc-url $TESTNET_BSC_RPC_URL --private-key $PRIVATE_KEY
 ```
 
 ### Post-Deployment Configuration
