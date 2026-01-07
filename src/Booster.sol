@@ -865,6 +865,41 @@ contract Booster is
         view
         returns (uint256 totalClaimable)
     {
+        return _quoteClaimableInternal(eventId, fightId, user, enforceDeadline, false);
+    }
+
+    /**
+     * @notice Quote historical claimable payout across a set of boosts for a user (includes already claimed boosts).
+     * @dev Returns total payout that would have been claimable, including boosts already claimed.
+     *      Useful for historical analysis. Does NOT enforce deadline.
+     * @param eventId Event identifier
+     * @param fightId Fight number
+     * @param user User address
+     */
+    function quoteClaimableHistorical(string calldata eventId, uint256 fightId, address user)
+        external
+        view
+        returns (uint256 totalClaimable)
+    {
+        return _quoteClaimableInternal(eventId, fightId, user, false, true);
+    }
+
+    /**
+     * @notice Internal function to calculate claimable payout for boosts
+     * @param eventId Event identifier
+     * @param fightId Fight number
+     * @param user User address
+     * @param enforceDeadline Whether to check claim deadline
+     * @param includeClaimed Whether to include already claimed boosts in calculation
+     * @return totalClaimable Total claimable amount
+     */
+    function _quoteClaimableInternal(
+        string calldata eventId,
+        uint256 fightId,
+        address user,
+        bool enforceDeadline,
+        bool includeClaimed
+    ) internal view returns (uint256 totalClaimable) {
         Event storage evt = events[eventId];
         require(evt.exists, "event not exists");
         Fight storage fight = fights[eventId][fightId];
@@ -884,7 +919,7 @@ contract Booster is
         uint256 prizePool = fight.originalPool - fight.sumWinnersStakes + fight.bonusPool;
         for (uint256 i = 0; i < indices.length; i++) {
             Boost storage boost = boosts[eventId][fightId][indices[i]];
-            if (boost.claimed) continue;
+            if (!includeClaimed && boost.claimed) continue;
             if (boost.user != user) continue; // defensive
             uint256 points = calculateUserPoints(
                 boost.predictedWinner,
