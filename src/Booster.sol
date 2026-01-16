@@ -1122,7 +1122,9 @@ contract Booster is
 
         uint256 prizePool = fight.originalPool - fight.sumWinnersStakes + fight.bonusPool;
         for (uint256 i = 0; i < boostIndices.length; i++) {
-            payout += _processWinningBoostClaim(eventId, fightId, fight, boosts[eventId][fightId], boostIndices[i], user, prizePool);
+            payout += _processWinningBoostClaim(
+                eventId, fightId, fight, boosts[eventId][fightId], boostIndices[i], user, prizePool
+            );
         }
         return payout;
     }
