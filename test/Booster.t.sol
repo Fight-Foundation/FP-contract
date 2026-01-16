@@ -196,7 +196,9 @@ contract BoosterTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit Booster.BoostPlaced(EVENT_1, FIGHT_1, user1, 0, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT);
+        emit Booster.BoostPlaced(
+            EVENT_1, FIGHT_1, user1, 0, 100 ether, Booster.Corner.RED, Booster.WinMethod.KNOCKOUT, block.timestamp
+        );
         booster.placeBoosts(EVENT_1, boosts);
 
         // Verify boosts created
@@ -316,7 +318,7 @@ contract BoosterTest is Test {
         // Add to boost
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit Booster.BoostIncreased(EVENT_1, FIGHT_1, user1, 0, 50 ether, 150 ether);
+        emit Booster.BoostIncreased(EVENT_1, FIGHT_1, user1, 0, 50 ether, 150 ether, block.timestamp);
         booster.addToBoost(EVENT_1, FIGHT_1, 0, 50 ether);
 
         // Verify boost amount increased
@@ -626,6 +628,49 @@ contract BoosterTest is Test {
         uint256 totalClaimable = booster.quoteClaimable(EVENT_1, FIGHT_1, user1, false);
 
         assertEq(totalClaimable, 0);
+    }
+
+    function test_quoteClaimableHistorical_includesClaimed() public {
+        _createDefaultEvent();
+        _placeMultipleBoosts();
+
+        vm.prank(operator);
+        booster.submitFightResult(
+            EVENT_1,
+            FIGHT_1,
+            Booster.Corner.RED,
+            Booster.WinMethod.KNOCKOUT,
+            10,
+            20,
+            100 ether, // sumWinnersStakes
+            2000 ether // winningPoolTotalShares
+        );
+
+        _setEventClaimReady(EVENT_1);
+
+        // Get indices before claiming
+        uint256[] memory indices = booster.getUserBoostIndices(EVENT_1, FIGHT_1, user1);
+        assertEq(indices.length, 1);
+
+        // Check quote before claiming
+        uint256 totalClaimableBefore = booster.quoteClaimable(EVENT_1, FIGHT_1, user1, false);
+        uint256 totalHistoricalBefore = booster.quoteClaimableHistorical(EVENT_1, FIGHT_1, user1);
+
+        // Both should return the same value before claiming
+        assertEq(totalClaimableBefore, totalHistoricalBefore);
+
+        // Claim the reward
+        vm.prank(user1);
+        booster.claimReward(EVENT_1, FIGHT_1, indices);
+
+        // After claiming, quoteClaimable should return 0
+        uint256 totalClaimableAfter = booster.quoteClaimable(EVENT_1, FIGHT_1, user1, false);
+        assertEq(totalClaimableAfter, 0);
+
+        // But quoteClaimableHistorical should still return the original amount
+        uint256 totalHistoricalAfter = booster.quoteClaimableHistorical(EVENT_1, FIGHT_1, user1);
+        assertEq(totalHistoricalAfter, totalClaimableBefore);
+        assertGt(totalHistoricalAfter, 0);
     }
 
     // ============ Claim Reward Tests ============
