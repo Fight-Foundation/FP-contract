@@ -2,13 +2,13 @@
  * @notice Script to stake and unstake FIGHT tokens
  *
  * @example Stake 100 tokens (1e20 = 100 * 1e18)
- * ts-node tools/tools/staking/stake.ts --network testnet --action stake --amount 100
+ * ts-node tools/staking/stake.ts --network testnet --action stake --amount 100
  *
  * @example Unstake 50 tokens
- * ts-node tools/tools/staking/stake.ts --network testnet --action unstake --amount 50
+ * ts-node tools/staking/stake.ts --network testnet --action unstake --amount 50
  *
  * @example Check balance
- * ts-node tools/tools/staking/stake.ts --network testnet --action balance
+ * ts-node tools/staking/stake.ts --network testnet --action balance
  */
 import "dotenv/config";
 import { ethers } from "ethers";
