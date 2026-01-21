@@ -49,7 +49,7 @@ contract Staking is Ownable2Step, Pausable, ReentrancyGuard {
      * @param owner Address of the contract owner
      */
     constructor(address fightToken, address owner) Ownable(owner) {
-        require(fightToken != address(0), "Zero address");
+        require(fightToken.code.length > 0, "Invalid token");
         FIGHT_TOKEN = IERC20(fightToken);
     }
 

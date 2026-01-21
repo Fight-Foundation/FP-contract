@@ -50,6 +50,9 @@ contract DeployStaking is Script {
     function run() external returns (Staking staking) {
         address fightTokenAddr = vm.envAddress("FIGHT_TOKEN_ADDRESS");
 
+        // Validate that FIGHT_TOKEN_ADDRESS has code
+        require(fightTokenAddr.code.length > 0, "FIGHT_TOKEN_ADDRESS has no code - check deployment");
+
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(pk);
         vm.startBroadcast(pk);
@@ -57,6 +60,7 @@ contract DeployStaking is Script {
         console2.log("Deploying Staking contract with:");
         console2.log("  deployer (owner):", deployer);
         console2.log("  fightToken:", fightTokenAddr);
+        console2.log("  fightToken code size:", fightTokenAddr.code.length);
 
         staking = new Staking(fightTokenAddr, deployer);
 
