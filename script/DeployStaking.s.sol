@@ -71,20 +71,6 @@ contract DeployStaking is Script {
         console2.log("FIGHT Token Address:", fightTokenAddr);
         console2.log("FIGHT Token Code Size:", fightTokenAddr.code.length);
         console2.log("");
-
-        // Request confirmation
-        string memory prompt = string.concat("Deploy Staking contract to ", network, "? (y/N): ");
-        string memory response = vm.readLine(prompt);
-
-        require(
-            keccak256(bytes(response)) == keccak256(bytes("y\n"))
-                || keccak256(bytes(response)) == keccak256(bytes("Y\n"))
-                || keccak256(bytes(response)) == keccak256(bytes("yes\n"))
-                || keccak256(bytes(response)) == keccak256(bytes("YES\n")),
-            "Deployment cancelled by user"
-        );
-
-        console2.log("");
         console2.log("Deploying...");
         console2.log("");
 
