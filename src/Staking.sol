@@ -107,6 +107,14 @@ contract Staking is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     /**
+     * @notice Prevent renouncing ownership
+     * @dev Ownership renounce is disabled to maintain pause/unpause functionality
+     */
+    function renounceOwnership() public override onlyOwner {
+        revert("Not allowed");
+    }
+
+    /**
      * @notice Recover ERC20 tokens accidentally sent to this contract
      * @dev Only allows recovery of tokens that are NOT the staking token (FIGHT_TOKEN)
      *      This protects staked tokens while allowing recovery of accidentally sent tokens

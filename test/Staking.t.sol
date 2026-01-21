@@ -410,6 +410,22 @@ contract StakingTest is Test {
     }
 
     /*//////////////////////////////////////////////////////////////
+                        OWNERSHIP TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_RenounceOwnership_Reverts() public {
+        vm.prank(owner);
+        vm.expectRevert(bytes("Not allowed"));
+        staking.renounceOwnership();
+    }
+
+    function test_RenounceOwnership_NonOwner_Reverts() public {
+        vm.prank(user1);
+        vm.expectRevert();
+        staking.renounceOwnership();
+    }
+
+    /*//////////////////////////////////////////////////////////////
                         RECOVERY TESTS
     //////////////////////////////////////////////////////////////*/
 
