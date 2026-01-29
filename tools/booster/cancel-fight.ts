@@ -2,7 +2,7 @@
  * @notice Script to cancel a fight (no-contest scenario - enables full refunds)
  *
  * @example Cancel a single fight
- * ts-node tools/booster/cancel-fight.ts --network mainnet --eventId ufc-324 --fightId 7
+ * ts-node tools/booster/cancel-fight.ts --network testnet --eventId ufc-324 --fightId 7
  * ts-node tools/booster/cancel-fight.ts --network mainnet --eventId ufc-324 --fightId 10
  * ts-node tools/booster/cancel-fight.ts --network mainnet --eventId ufc-fight-night-dec-13-2025 --fightId 2
  *

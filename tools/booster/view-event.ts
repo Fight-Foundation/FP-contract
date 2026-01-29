@@ -14,7 +14,7 @@
  * ts-node tools/booster/view-event.ts --network testnet --eventId ufc-323 --fightId 1
  *
  * @example Using alternative parameter names
- * ts-node tools/booster/view-event.ts --network testnet --event ufc-323 --fight 1
+ * ts-node tools/booster/view-event.ts --network testnet --event ufc-324 
  */
 import "dotenv/config";
 import { ethers } from "ethers";
