@@ -2537,13 +2537,10 @@ contract BoosterTest is Test {
             ,,,
             uint256 bonusPool,
             uint256 originalPool,
-            uint256 _sumWinnersStakes,
-            uint256 _winningPoolTotalShares,
-            uint256 _pointsForWinner,
-            uint256 _pointsForWinnerMethod,
+            ,,,
+            ,
             uint256 claimedAmount,
-            uint256 _boostCutoff,
-            bool _cancelled
+            ,
         ) = booster.getFight(EVENT_1, FIGHT_1);
         uint256 totalPool = originalPool + bonusPool;
 
@@ -2606,18 +2603,7 @@ contract BoosterTest is Test {
         );
 
         // STEP 3: Check fight.claimedAmount - BUG FIXED: should be updated now
-        (
-            ,,,
-            uint256 _bonusPool2,
-            uint256 _originalPool2,
-            uint256 _sumWinnersStakes2,
-            uint256 _winningPoolTotalShares2,
-            uint256 _pointsForWinner2,
-            uint256 _pointsForWinnerMethod2,
-            uint256 claimedAmountAfterRefunds,
-            uint256 _boostCutoff2,
-            bool _cancelled2
-        ) = booster.getFight(EVENT_1, FIGHT_1);
+        (,,,,,,,,, uint256 claimedAmountAfterRefunds,,) = booster.getFight(EVENT_1, FIGHT_1);
 
         console2.log("\nBug Fix Verification:");
         console2.log("  fight.claimedAmount after refunds: %d", claimedAmountAfterRefunds);

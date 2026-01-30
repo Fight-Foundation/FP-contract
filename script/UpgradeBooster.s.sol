@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import { Script, console2 } from "forge-std/Script.sol";
 import { Booster } from "src/Booster.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title UpgradeBooster
