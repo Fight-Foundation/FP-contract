@@ -909,13 +909,25 @@ contract Booster is
             uint256 deadline = evt.claimDeadline;
             require(deadline == 0 || block.timestamp <= deadline, "claim deadline passed");
         }
+        uint256[] storage indices = userBoostIndices[eventId][fightId][user];
         totalClaimable = 0;
+
+        // Handle cancelled fight (full refund of principal)
+        if (fight.cancelled) {
+            for (uint256 i = 0; i < indices.length; i++) {
+                Boost storage boost = boosts[eventId][fightId][indices[i]];
+                if (includeClaimed || !boost.claimed) {
+                    totalClaimable += boost.amount;
+                }
+            }
+            return totalClaimable;
+        }
+
         // If no winners, return zeros
         if (fight.sumWinnersStakes == 0 || fight.winningPoolTotalShares == 0) {
             return totalClaimable;
         }
 
-        uint256[] storage indices = userBoostIndices[eventId][fightId][user];
         uint256 prizePool = fight.originalPool - fight.sumWinnersStakes + fight.bonusPool;
         for (uint256 i = 0; i < indices.length; i++) {
             Boost storage boost = boosts[eventId][fightId][indices[i]];

@@ -629,6 +629,39 @@ contract BoosterTest is Test {
 
         assertEq(totalClaimable, 0);
     }
+    function test_quoteClaimable_cancelledFight() public {
+        _createDefaultEvent();
+        _placeMultipleBoosts();
+
+        // Cancel fight
+        vm.prank(operator);
+        booster.cancelFight(EVENT_1, FIGHT_1);
+
+        // Quote claimable should return the stake amount for cancelled fight
+        uint256 totalClaimable = booster.quoteClaimable(EVENT_1, FIGHT_1, user1, false);
+        assertEq(totalClaimable, 100 ether, "User1 should get 100 ether refund quote");
+
+        uint256 totalClaimable2 = booster.quoteClaimable(EVENT_1, FIGHT_1, user2, false);
+        assertEq(totalClaimable2, 200 ether, "User2 should get 200 ether refund quote");
+    }
+
+    function test_quoteClaimable_noContestOutcome() public {
+        _createDefaultEvent();
+        _placeMultipleBoosts();
+
+        // Submit No Contest result (which auto-sets cancelled=true)
+        vm.prank(operator);
+        booster.submitFightResult(
+            EVENT_1, FIGHT_1, Booster.Corner.NONE, Booster.WinMethod.NO_CONTEST, 10, 20, 0, 0
+        );
+
+        // Quote claimable should return the stake amount for No Contest outcome
+        uint256 totalClaimable = booster.quoteClaimable(EVENT_1, FIGHT_1, user1, false);
+        assertEq(totalClaimable, 100 ether, "User1 should get 100 ether refund quote (No Contest)");
+
+        uint256 totalClaimable2 = booster.quoteClaimable(EVENT_1, FIGHT_1, user2, false);
+        assertEq(totalClaimable2, 200 ether, "User2 should get 200 ether refund quote (No Contest)");
+    }
 
     function test_quoteClaimableHistorical_includesClaimed() public {
         _createDefaultEvent();
