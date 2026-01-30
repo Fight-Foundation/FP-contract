@@ -2533,15 +2533,7 @@ contract BoosterTest is Test {
         booster.depositBonus(EVENT_1, FIGHT_1, bonusAmount, false);
 
         // Verify initial state
-        (
-            ,,,
-            uint256 bonusPool,
-            uint256 originalPool,
-            ,,,
-            ,
-            uint256 claimedAmount,
-            ,
-        ) = booster.getFight(EVENT_1, FIGHT_1);
+        (,,, uint256 bonusPool, uint256 originalPool,,,,, uint256 claimedAmount,,) = booster.getFight(EVENT_1, FIGHT_1);
         uint256 totalPool = originalPool + bonusPool;
 
         console2.log("Initial state:");
