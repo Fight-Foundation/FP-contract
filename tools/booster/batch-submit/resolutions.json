@@ -1,5 +1,5 @@
 {
-  "eventId": "ufc-324",
+  "eventId": "ufc-325",
   "fights": [
     {
       "fightId": 1,
@@ -7,79 +7,99 @@
       "method": "DECISION",
       "pointsForWinner": "3",
       "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "153511",
-      "winningPoolTotalShares": "465580",
-      "totalAmountStaked": "173548"
+      "sumWinnersStakes": "119363",
+      "winningPoolTotalShares": "424287",
+      "totalAmountStaked": "126459"
     },
     {
       "fightId": 2,
-      "winner": "RED",
-      "method": "DECISION",
-      "pointsForWinner": "3",
-      "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "18055",
-      "winningPoolTotalShares": "68691",
-      "totalAmountStaked": "32760"
-    },
-    {
-      "fightId": 3,
-      "winner": "RED",
+      "winner": "BLUE",
       "method": "KNOCKOUT",
       "pointsForWinner": "3",
       "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "17896",
-      "winningPoolTotalShares": "68490",
-      "totalAmountStaked": "26101"
+      "sumWinnersStakes": "41568",
+      "winningPoolTotalShares": "127979",
+      "totalAmountStaked": "42833"
+    },
+    {
+      "fightId": 3,
+      "winner": "BLUE",
+      "method": "KNOCKOUT",
+      "pointsForWinner": "3",
+      "pointsForWinnerMethod": "4",
+      "sumWinnersStakes": "14183",
+      "winningPoolTotalShares": "49874",
+      "totalAmountStaked": "20742"
     },
     {
       "fightId": 4,
-      "winner": "RED",
-      "method": "DECISION",
-      "pointsForWinner": "3",
-      "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "125026",
-      "winningPoolTotalShares": "387716",
-      "totalAmountStaked": "126104"
-    },
-    {
-      "fightId": 5,
       "winner": "BLUE",
       "method": "DECISION",
       "pointsForWinner": "3",
       "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "9638",
-      "winningPoolTotalShares": "32980",
-      "totalAmountStaked": "25524"
+      "sumWinnersStakes": "24305",
+      "winningPoolTotalShares": "73095",
+      "totalAmountStaked": "24778"
+    },
+    {
+      "fightId": 5,
+      "winner": "RED",
+      "method": "SUBMISSION",
+      "pointsForWinner": "3",
+      "pointsForWinnerMethod": "4",
+      "sumWinnersStakes": "52505",
+      "winningPoolTotalShares": "158975",
+      "totalAmountStaked": "52739"
     },
     {
       "fightId": 6,
       "winner": "RED",
+      "method": "KNOCKOUT",
+      "pointsForWinner": "3",
+      "pointsForWinnerMethod": "4",
+      "sumWinnersStakes": "21447",
+      "winningPoolTotalShares": "77332",
+      "totalAmountStaked": "21597"
+    },
+    {
+      "fightId": 7,
+      "winner": "RED",
       "method": "DECISION",
       "pointsForWinner": "3",
       "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "45584",
-      "winningPoolTotalShares": "157285",
-      "totalAmountStaked": "51045"
+      "sumWinnersStakes": "5326",
+      "winningPoolTotalShares": "20843",
+      "totalAmountStaked": "15239"
     },
     {
       "fightId": 8,
       "winner": "RED",
-      "method": "KNOCKOUT",
+      "method": "SUBMISSION",
       "pointsForWinner": "3",
       "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "44581",
-      "winningPoolTotalShares": "166117",
-      "totalAmountStaked": "48353"
+      "sumWinnersStakes": "4171",
+      "winningPoolTotalShares": "12832",
+      "totalAmountStaked": "11286"
     },
     {
       "fightId": 9,
       "winner": "RED",
-      "method": "KNOCKOUT",
+      "method": "DECISION",
       "pointsForWinner": "3",
       "pointsForWinnerMethod": "4",
-      "sumWinnersStakes": "6631",
-      "winningPoolTotalShares": "25328",
-      "totalAmountStaked": "12963"
+      "sumWinnersStakes": "6751",
+      "winningPoolTotalShares": "26413",
+      "totalAmountStaked": "13537"
+    },
+    {
+      "fightId": 10,
+      "winner": "BLUE",
+      "method": "SUBMISSION",
+      "pointsForWinner": "3",
+      "pointsForWinnerMethod": "4",
+      "sumWinnersStakes": "18213",
+      "winningPoolTotalShares": "65495",
+      "totalAmountStaked": "18481"
     }
   ]
 }

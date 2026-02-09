@@ -16,10 +16,6 @@ const ABI = [
   "function quoteClaimable(string calldata eventId, uint256 fightId, address user, bool enforceDeadline) external view returns (uint256 totalClaimable)",
 ];
 
-function formatEther(wei: bigint): string {
-  return `${ethers.formatEther(wei)} FP`;
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   
@@ -57,7 +53,7 @@ async function main() {
       const claimableBigInt = BigInt(claimable.toString());
       totalAllFights += claimableBigInt;
       
-      console.log(`  Fight ID ${fightId.toString().padEnd(2)}: ${formatEther(claimableBigInt)}`);
+      console.log(`  Fight ID ${fightId.toString().padEnd(2)}: ${claimableBigInt}`);
     } catch (error: any) {
       let reason = "Error";
       if (error.reason) reason = error.reason;
@@ -70,7 +66,7 @@ async function main() {
   }
 
   console.log("─".repeat(60));
-  console.log(`Total Claimable: ${formatEther(totalAllFights)}`);
+  console.log(`Total Claimable: ${totalAllFights}`);
   console.log("\n✅ Query completed successfully");
 }
 
