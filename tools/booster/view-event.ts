@@ -14,7 +14,7 @@
  * ts-node tools/booster/view-event.ts --network testnet --eventId ufc-323 --fightId 1
  *
  * @example Using alternative parameter names
- * ts-node tools/booster/view-event.ts --network testnet --event ufc-323 --fight 1
+ * ts-node tools/booster/view-event.ts --network testnet --event ufc-324 
  */
 import "dotenv/config";
 import { ethers } from "ethers";
@@ -153,31 +153,55 @@ async function main() {
     const fightsResult = (await getEventFightsFunc(eventId)) as unknown as any[];
     const fightIds = fightsResult[0];
     const statuses = fightsResult[1];
-    console.log(`\n🥊 Fights Status (${fightIds.length} total):`);
-    
-    // Get cutoff for first fight to check if all have the same (common case)
+    console.log(`\n🥊 Fights (${fightIds.length} total):`);
+
     const getFightFunc = booster.getFunction("getFight");
-    const firstFightResult = (await getFightFunc(eventId, fightIds[0])) as unknown as any[];
-    const firstFightCutoff = firstFightResult[10]; // boostCutoff is at index 10
-    
-    // Show status and cutoff for each fight
+    const totalPoolFunc = booster.getFunction("totalPool");
+
     for (let i = 0; i < fightIds.length; i++) {
-      const status = formatStatus(toNumber(statuses[i]));
-      // Get cutoff for this fight
       const fightResult = (await getFightFunc(eventId, fightIds[i])) as unknown as any[];
-      const cutoff = fightResult[10];
-      
-      let cutoffStr = "";
-      if (cutoff && BigInt(cutoff.toString()) > 0n) {
-        cutoffStr = ` | Cutoff: ${formatTimestamp(BigInt(cutoff.toString()))}`;
-      } else {
-        cutoffStr = " | Cutoff: Not set";
+      const status = toNumber(fightResult[0]);
+      const winner = toNumber(fightResult[1]);
+      const method = toNumber(fightResult[2]);
+      const bonusPool = BigInt(fightResult[3].toString());
+      const originalPool = BigInt(fightResult[4].toString());
+      const sumWinnersStakes = BigInt(fightResult[5].toString());
+      const winningPoolTotalShares = BigInt(fightResult[6].toString());
+      const pointsForWinner = BigInt(fightResult[7].toString());
+      const pointsForWinnerMethod = BigInt(fightResult[8].toString());
+      const claimedAmount = BigInt(fightResult[9].toString());
+      const cutoff = BigInt(fightResult[10].toString());
+      const cancelled = fightResult[11];
+
+      console.log(`\n  --- Fight ${fightIds[i]} ---`);
+      console.log(`  Status: ${formatStatus(status)}`);
+
+      if (cutoff > 0n) {
+        console.log(`  Cutoff: ${formatTimestamp(cutoff)}`);
       }
-      
-      console.log(`  Fight ${fightIds[i]}: ${status}${cutoffStr}`);
+
+      if (cancelled) {
+        console.log(`  ⚠️  CANCELLED (full refund)`);
+      }
+
+      if (status === FightStatus.RESOLVED && !cancelled) {
+        console.log(`  Winner: ${formatCorner(winner)}`);
+        console.log(`  Method: ${formatWinMethod(method)}`);
+        console.log(`  Points: Winner=${pointsForWinner.toString()}, Winner+Method=${pointsForWinnerMethod.toString()}`);
+        console.log(`  Sum Winners Stakes: ${formatEther(sumWinnersStakes)}`);
+        console.log(`  Winning Pool Total Shares: ${winningPoolTotalShares.toString()}`);
+      }
+
+      const total = originalPool + bonusPool;
+      console.log(`  Pool: ${formatEther(originalPool)} stakes + ${formatEther(bonusPool)} bonus = ${formatEther(total)} total`);
+
+      if (status === FightStatus.RESOLVED) {
+        const unclaimed = total - claimedAmount;
+        console.log(`  Claimed: ${formatEther(claimedAmount)} | Unclaimed: ${formatEther(unclaimed)}`);
+      }
     }
 
-    // If specific fight requested, show detailed information
+    // If specific fight requested, show detailed information (boost-level data)
     const fightIdArg = args.fightId || args.fight;
     if (fightIdArg) {
       const fightId = BigInt(fightIdArg);
@@ -186,45 +210,40 @@ async function main() {
       }
 
       console.log(`\n🔍 Detailed Fight Information (Fight ${fightId}):`);
-      const getFightFunc = booster.getFunction("getFight");
       const fightResult = (await getFightFunc(eventId, fightId)) as unknown as any[];
-      const status = fightResult[0];
-      const winner = fightResult[1];
-      const method = fightResult[2];
-      const bonusPool = fightResult[3];
-      const originalPool = fightResult[4];
-      const sumWinnersStakes = fightResult[5];
-      const winningPoolTotalShares = fightResult[6];
-      const pointsForWinner = fightResult[7];
-      const pointsForWinnerMethod = fightResult[8];
-      const claimedAmount = fightResult[9];
-      const boostCutoff = fightResult[10];
+      const status = toNumber(fightResult[0]);
+      const winner = toNumber(fightResult[1]);
+      const method = toNumber(fightResult[2]);
+      const bonusPool = BigInt(fightResult[3].toString());
+      const originalPool = BigInt(fightResult[4].toString());
+      const sumWinnersStakes = BigInt(fightResult[5].toString());
+      const winningPoolTotalShares = BigInt(fightResult[6].toString());
+      const pointsForWinner = BigInt(fightResult[7].toString());
+      const pointsForWinnerMethod = BigInt(fightResult[8].toString());
+      const claimedAmount = BigInt(fightResult[9].toString());
+      const boostCutoff = BigInt(fightResult[10].toString());
       const cancelled = fightResult[11];
 
-      const statusNum = toNumber(status);
-      console.log(`  Status: ${formatStatus(statusNum)}`);
+      console.log(`  Status: ${formatStatus(status)}`);
       console.log(`  Boost Cutoff: ${formatTimestamp(boostCutoff)}`);
       console.log(`  Cancelled: ${cancelled ? "Yes" : "No"}`);
 
-      if (statusNum === FightStatus.RESOLVED) {
-        console.log(`  Winner: ${formatCorner(toNumber(winner))}`);
-        console.log(`  Method: ${formatWinMethod(toNumber(method))}`);
+      if (status === FightStatus.RESOLVED && !cancelled) {
+        console.log(`  Winner: ${formatCorner(winner)}`);
+        console.log(`  Method: ${formatWinMethod(method)}`);
         console.log(`  Points for Winner: ${pointsForWinner.toString()}`);
         console.log(`  Points for Winner+Method: ${pointsForWinnerMethod.toString()}`);
         console.log(`  Sum Winners Stakes: ${formatEther(sumWinnersStakes)}`);
         console.log(`  Winning Pool Total Shares: ${winningPoolTotalShares.toString()}`);
       }
 
+      const total = originalPool + bonusPool;
       console.log(`  Original Pool (user stakes): ${formatEther(originalPool)}`);
       console.log(`  Bonus Pool: ${formatEther(bonusPool)}`);
-      
-      const totalPoolFunc = booster.getFunction("totalPool");
-      const totalPoolAmount = await totalPoolFunc(eventId, fightId);
-      console.log(`  Total Pool: ${formatEther(totalPoolAmount)}`);
-      
+      console.log(`  Total Pool: ${formatEther(total)}`);
       console.log(`  Claimed Amount: ${formatEther(claimedAmount)}`);
-      
-      const unclaimed = BigInt(totalPoolAmount.toString()) - BigInt(claimedAmount.toString());
+
+      const unclaimed = total - claimedAmount;
       console.log(`  Unclaimed: ${formatEther(unclaimed)}`);
     }
 
