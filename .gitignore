@@ -46,7 +46,3 @@ node_modules/
 .vscode/
 .idea/
 
-#############################
-# Optional project docs output
-#############################
-docs/
