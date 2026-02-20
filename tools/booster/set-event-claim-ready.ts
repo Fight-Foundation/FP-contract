@@ -5,7 +5,7 @@
  * This provides flexibility in case of inconsistent results that need to be corrected before allowing claims.
  *
  * @example Using alternative parameter names
- * ts-node tools/booster/set-event-claim-ready.ts --network testnet --event ufc-323 --ready true
+ * ts-node tools/booster/set-event-claim-ready.ts --network testnet --event ufc-324 --ready true
  * ts-node tools/booster/set-event-claim-ready.ts --network mainnet --event ufc-fight-night-dec-13-2025 --ready true
  * 
  */
